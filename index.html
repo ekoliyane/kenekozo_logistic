@@ -15,8 +15,12 @@
     <!-- Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- LZString (Untuk Kompresi Link agar tidak Error 404) -->
+    <!-- LZString (Kompresi Link) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+
+    <!-- jsPDF & AutoTable (Untuk PDF Keren) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -174,10 +178,11 @@
                         <p class="text-sm font-bold text-green-800 mb-1">Misi Selesai! 🎉</p>
                         <p class="text-xs text-green-700 mb-3">Semua titik sudah dikirim/diambil.</p>
                         <div class="flex gap-2">
-                            <button onclick="downloadReport()" class="flex-1 bg-white border border-green-600 text-green-600 py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2">
-                                <i data-lucide="file-text" class="w-4 h-4"></i> Download Laporan
+                            <!-- TOMBOL DOWNLOAD PDF -->
+                            <button onclick="downloadPDFReport()" class="flex-1 bg-white border border-red-600 text-red-600 py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2 hover:bg-red-50">
+                                <i data-lucide="file-text" class="w-4 h-4"></i> Unduh PDF
                             </button>
-                            <button onclick="resetAll()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold">Tutup</button>
+                            <button onclick="resetAll()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-green-700">Tutup</button>
                         </div>
                     </div>
 
@@ -226,14 +231,10 @@
         let activeMission = null;
         let selectedCoords = null;
 
-        // --- INIT ---
         window.onload = function() {
             initAdminMap();
-            
-            // CEK MAGIC LINK (LZString Compressed)
             const urlParams = new URLSearchParams(window.location.search);
-            const missionData = urlParams.get('d'); // 'd' for data
-            
+            const missionData = urlParams.get('d'); 
             if (missionData) {
                 try {
                     const jsonStr = LZString.decompressFromEncodedURIComponent(missionData);
@@ -244,24 +245,18 @@
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                 } catch (e) { console.error("Link invalid", e); }
-            } else {
-                loadMissionFromStorage();
-            }
-
+            } else { loadMissionFromStorage(); }
             lucide.createIcons();
             const savedPhone = localStorage.getItem('kenekozo_phone');
             if(savedPhone) document.getElementById('admin-phone').value = savedPhone;
         };
 
-        // --- MAPS ---
         function initAdminMap() {
-            if (map) return; // Prevent re-init
-            if (!document.getElementById('map')) return; // Safety check for element existence
-            
+            if (map) return; 
+            if (!document.getElementById('map')) return; 
             map = L.map('map').setView([WAREHOUSE.lat, WAREHOUSE.lng], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             L.marker([WAREHOUSE.lat, WAREHOUSE.lng]).addTo(map).bindPopup("Gudang Kenekozo");
-
             map.on('click', function(e) {
                 if (currentRole !== 'admin') return;
                 if (selectedCoords) map.removeLayer(selectedCoords);
@@ -272,34 +267,23 @@
 
         function initDriverMap() {
             if(driverMap) return; 
-            if (!document.getElementById('driver-map')) return; // Safety check
-            
+            if (!document.getElementById('driver-map')) return; 
             driverMap = L.map('driver-map').setView([WAREHOUSE.lat, WAREHOUSE.lng], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(driverMap);
         }
 
-        // --- PARSING ---
         function parseBulkInput() {
             const text = document.getElementById('bulk-input').value;
             if(!text.trim()) return alert("Tempel teks dulu!");
-
             adminMarkers.forEach(m => map.removeLayer(m));
             adminMarkers = [];
             stops = []; 
-
-            // Deteksi Format: Struk atau List?
-            if (text.includes('PESANAN SEWA') || text.includes('DATA PENYEWA')) {
-                parseReceiptFormat(text);
-            } else {
-                parseLegacyListFormat(text);
-            }
-
-            if(stops.length === 0) {
-                alert("Gagal baca data. Cek format!");
-            } else {
+            if (text.includes('PESANAN SEWA') || text.includes('DATA PENYEWA')) parseReceiptFormat(text);
+            else parseLegacyListFormat(text);
+            if(stops.length === 0) alert("Gagal baca data. Cek format!");
+            else {
                 renderDraftList();
                 document.getElementById('bulk-input').value = ''; 
-                // Draw markers
                 stops.forEach(s => {
                     const m = L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
                     adminMarkers.push(m);
@@ -310,18 +294,13 @@
             }
         }
 
-        // PARSER 1: Format Struk (Detail Lengkap)
         function parseReceiptFormat(text) {
             const nameMatch = text.match(/Nama:\s*(.+)/);
             const waMatch = text.match(/WA:\s*(.+)/);
-            const addrMatch = text.match(/ALAMAT PENGIRIMAN\s*\n\s*(.+?)\s*(\(Maps|$)/i); // Capture address line
+            const addrMatch = text.match(/ALAMAT PENGIRIMAN\s*\n\s*(.+?)\s*(\(Maps|$)/i); 
             const mapsMatch = text.match(/maps\.google\.com\/\?q=([-0-9\.]+),([-0-9\.]+)/);
-            
-            let items = [];
-            let totalLoadFee = 0;
-            const lines = text.split('\n');
-            let capturingUnits = false;
-
+            let items = []; let totalLoadFee = 0;
+            const lines = text.split('\n'); let capturingUnits = false;
             lines.forEach(line => {
                 if (line.includes('UNIT YANG DIPESAN')) { capturingUnits = true; return; }
                 if (line.includes('RINCIAN BIAYA')) { capturingUnits = false; return; }
@@ -335,65 +314,44 @@
                     }
                 }
             });
-
             if (nameMatch && mapsMatch) {
                 stops.push({
-                    id: Date.now(),
-                    task: 'DELIVERY',
-                    name: nameMatch[1].trim(),
+                    id: Date.now(), task: 'DELIVERY', name: nameMatch[1].trim(),
                     phone: waMatch ? waMatch[1].trim() : '-',
-                    address: addrMatch ? addrMatch[1].trim() : 'Alamat sesuai Maps', // New Field
-                    lat: parseFloat(mapsMatch[1]),
-                    lng: parseFloat(mapsMatch[2]),
-                    status: 'PENDING',
-                    size: 'custom', 
-                    items: items, 
-                    customLoadFee: totalLoadFee 
+                    address: addrMatch ? addrMatch[1].trim() : 'Alamat sesuai Maps',
+                    lat: parseFloat(mapsMatch[1]), lng: parseFloat(mapsMatch[2]),
+                    status: 'PENDING', size: 'custom', items: items, customLoadFee: totalLoadFee 
                 });
             }
         }
 
-        // PARSER 2: Format List Simple
         function parseLegacyListFormat(text) {
             const lines = text.split('\n');
             let currentTask = 'DELIVERY'; let currentItem = {}; let isParsingItem = false;
-            
             lines.forEach(line => {
                 const cleanLine = line.trim();
                 if (cleanLine.match(/(📦|:package:)?\s*PENGIRIMAN/i)) currentTask = 'DELIVERY';
                 if (cleanLine.match(/(🚚|:truck:)?\s*PENJEMPUTAN/i)) currentTask = 'PICKUP';
-
                 const nameMatch = cleanLine.match(/^\d+\.\s*(.+?)(?:\(|$)/);
                 if (nameMatch) {
                     if (isParsingItem && currentItem.name && currentItem.lat) stops.push(currentItem);
                     isParsingItem = true;
-                    // Try parsing phone from name line e.g. "Name (0812..)"
                     const phoneMatch = cleanLine.match(/\((08\d+)\)/);
                     currentItem = {
-                        id: Date.now() + Math.random(),
-                        task: currentTask,
-                        name: nameMatch[1].trim(),
-                        phone: phoneMatch ? phoneMatch[1] : '-',
-                        address: 'Sesuai Titik Maps',
-                        status: 'PENDING',
-                        size: 'small', customLoadFee: 0, items: []
+                        id: Date.now() + Math.random(), task: currentTask, name: nameMatch[1].trim(),
+                        phone: phoneMatch ? phoneMatch[1] : '-', address: 'Sesuai Titik Maps',
+                        status: 'PENDING', size: 'small', customLoadFee: 0, items: []
                     };
                 }
                 const unitMatch = cleanLine.match(/(🧊|:ice:)?\s*Unit:\s*(.+)/i);
                 if (unitMatch && isParsingItem) {
-                    const unitName = unitMatch[2];
-                    const fee = calculateUnitFee(unitName);
-                    currentItem.items = [{name: unitName, fee: fee}];
-                    currentItem.customLoadFee = fee;
+                    const unitName = unitMatch[2]; const fee = calculateUnitFee(unitName);
+                    currentItem.items = [{name: unitName, fee: fee}]; currentItem.customLoadFee = fee;
                 }
-                const locMatch = cleanLine.match(/Lok:\s*(.+)/i); // Catch simple address
+                const locMatch = cleanLine.match(/Lok:\s*(.+)/i);
                 if (locMatch && isParsingItem) currentItem.address = locMatch[1].trim();
-
                 const mapsMatch = cleanLine.match(/maps\.google\.com\/\?q=([-0-9\.]+),([-0-9\.]+)/);
-                if (mapsMatch && isParsingItem) {
-                    currentItem.lat = parseFloat(mapsMatch[1]);
-                    currentItem.lng = parseFloat(mapsMatch[2]);
-                }
+                if (mapsMatch && isParsingItem) { currentItem.lat = parseFloat(mapsMatch[1]); currentItem.lng = parseFloat(mapsMatch[2]); }
             });
             if (isParsingItem && currentItem.name && currentItem.lat) stops.push(currentItem);
         }
@@ -405,7 +363,6 @@
             return 10000; 
         }
 
-        // --- CORE LOGIC ---
         function renderDraftList() {
             const list = document.getElementById('stops-ul');
             const container = document.getElementById('draft-list');
@@ -427,76 +384,46 @@
             if (stops.length === 0) return;
             const adminPhone = document.getElementById('admin-phone').value;
             localStorage.setItem('kenekozo_phone', adminPhone);
-
-            // Simple TSP
-            let sortedStops = [];
-            let currentLoc = WAREHOUSE;
-            let remaining = [...stops];
+            let sortedStops = []; let currentLoc = WAREHOUSE; let remaining = [...stops];
             while(remaining.length > 0) {
                 let nearestIdx = 0; let minDist = Infinity;
                 remaining.forEach((stop, idx) => {
                     const d = Math.sqrt(Math.pow(stop.lat - currentLoc.lat, 2) + Math.pow(stop.lng - currentLoc.lng, 2));
                     if (d < minDist) { minDist = d; nearestIdx = idx; }
                 });
-                currentLoc = remaining[nearestIdx];
-                sortedStops.push(currentLoc);
-                remaining.splice(nearestIdx, 1);
+                currentLoc = remaining[nearestIdx]; sortedStops.push(currentLoc); remaining.splice(nearestIdx, 1);
             }
-
-            // Calc Dist
             const routePoints = [WAREHOUSE, ...sortedStops, WAREHOUSE];
             const coordsString = routePoints.map(p => `${p.lng},${p.lat}`).join(';');
             const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-
             const btn = document.querySelector('#draft-list button');
             const oriText = btn.innerHTML;
             btn.innerHTML = '⏳ Proses...'; btn.disabled = true;
-
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 const totalKM = Math.ceil((data.routes[0].distance / 1000) * 1.05);
-                
                 let payLoad = 0;
-                sortedStops.forEach(s => {
-                    if (s.customLoadFee) {
-                        payLoad += s.customLoadFee;
-                    } else {
-                        payLoad += PRICES.load[s.size];
-                    }
-                });
-                
-                const payDrive = totalKM * PRICES.perKM;
-                const payMeal = PRICES.meal;
-
+                sortedStops.forEach(s => { if (s.customLoadFee) payLoad += s.customLoadFee; else payLoad += PRICES.load[s.size]; });
+                const payDrive = totalKM * PRICES.perKM; const payMeal = PRICES.meal;
                 const missionObj = {
                     id: 'M-' + Date.now(),
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-                    adminPhone: adminPhone,
-                    totalDistance: totalKM,
-                    stops: sortedStops,
-                    startTime: null, 
+                    adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, startTime: null, 
                     payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
-
-                // GENERATE LINK (LZString Compressed)
                 const jsonString = JSON.stringify(missionObj);
                 const compressed = LZString.compressToEncodedURIComponent(jsonString);
                 const shareUrl = `${window.location.origin}${window.location.pathname}?d=${compressed}`;
-
                 document.getElementById('share-link-input').value = shareUrl;
                 document.getElementById('manual-code-area').value = compressed;
-                
                 const waText = `Pak Panggih, link misi hari ini:\n${shareUrl}`;
                 document.getElementById('wa-share-btn').href = `https://wa.me/?text=${encodeURIComponent(waText)}`;
                 document.getElementById('share-section').classList.remove('hidden');
-
                 localStorage.setItem('kenekozo_mission', JSON.stringify(missionObj));
                 activeMission = missionObj;
-                
                 stops = []; adminMarkers.forEach(m => map.removeLayer(m)); adminMarkers = [];
                 renderDraftList(); document.getElementById('bulk-input').value = '';
-
             } catch (e) { alert("Gagal hitung rute/koneksi."); }
             btn.innerHTML = oriText; btn.disabled = false;
         }
@@ -507,77 +434,47 @@
             const coordStr = document.getElementById('cust-coord').value;
             if(!name || !coordStr) return alert("Lengkapi data!");
             const [lat, lng] = coordStr.split(',').map(parseFloat);
-            
-            let fee = 10000;
-            if (size === 'medium') fee = 15000;
-            if (size === 'large') fee = 25000;
-
+            let fee = 10000; if (size === 'medium') fee = 15000; if (size === 'large') fee = 25000;
             stops.push({
-                id: Date.now(),
-                task: 'DELIVERY',
-                name: name,
-                size: size,
-                lat: lat,
-                lng: lng,
-                status: 'PENDING',
-                customLoadFee: fee,
-                items: [{name: 'Manual Input', fee: fee}]
+                id: Date.now(), task: 'DELIVERY', name: name, size: size, lat: lat, lng: lng,
+                status: 'PENDING', customLoadFee: fee, items: [{name: 'Manual Input', fee: fee}]
             });
-            
-            const markerHtml = `<div style="background:blue; width:10px; height:10px; border-radius:50%; border:1px solid white;"></div>`;
-            const m = L.marker([lat, lng], {icon: L.divIcon({html: markerHtml})}).addTo(map).bindPopup(name);
-            adminMarkers.push(m);
-            renderDraftList();
+            const m = L.marker([lat, lng]).addTo(map).bindPopup(name); adminMarkers.push(m); renderDraftList();
         }
 
-        // --- DRIVER ---
         function renderDriverView() {
             if (!activeMission) return;
             document.getElementById('no-mission').classList.add('hidden');
             document.getElementById('active-mission-card').classList.remove('hidden');
-
             document.getElementById('m-date').innerText = activeMission.date;
             document.getElementById('m-dist').innerText = activeMission.totalDistance;
             document.getElementById('m-total-pay').innerText = 'Rp ' + activeMission.payment.total.toLocaleString('id-ID');
             document.getElementById('pay-drive').innerText = 'Rp ' + activeMission.payment.drive.toLocaleString('id-ID');
             document.getElementById('pay-load').innerText = 'Rp ' + activeMission.payment.load.toLocaleString('id-ID');
-
             const status = activeMission.status || 'PENDING';
             if (activeMission.startTime) {
                 document.getElementById('m-start-time').innerText = `🚀 Mulai: ${activeMission.startTime}`;
                 document.getElementById('m-start-time').classList.remove('hidden');
             }
-
             const actionBtns = document.getElementById('action-buttons');
             const finishForm = document.getElementById('finish-form');
             const badge = document.getElementById('m-status-badge');
-            
             badge.innerText = status === 'ACCEPTED' ? 'SEDANG JALAN' : status;
+            if (status === 'PENDING') { actionBtns.classList.remove('hidden'); finishForm.classList.add('hidden'); } 
+            else if (status === 'ACCEPTED') { actionBtns.classList.add('hidden'); finishForm.classList.add('hidden'); } 
+            else if (status === 'COMPLETED') { actionBtns.classList.add('hidden'); finishForm.classList.remove('hidden'); }
             
-            if (status === 'PENDING') {
-                actionBtns.classList.remove('hidden'); finishForm.classList.add('hidden');
-            } else if (status === 'ACCEPTED') {
-                actionBtns.classList.add('hidden'); finishForm.classList.add('hidden');
-            } else if (status === 'COMPLETED') {
-                actionBtns.classList.add('hidden'); finishForm.classList.remove('hidden');
-            }
-
-            // Draw Route
             setTimeout(async () => {
                 initDriverMap(); driverMap.invalidateSize();
                 driverMap.eachLayer((l) => { if (l instanceof L.Marker || l instanceof L.Polyline) driverMap.removeLayer(l); });
-                
                 L.marker([WAREHOUSE.lat, WAREHOUSE.lng]).addTo(driverMap);
                 const bounds = new L.LatLngBounds(); bounds.extend([WAREHOUSE.lat, WAREHOUSE.lng]);
-
                 activeMission.stops.forEach((s, idx) => {
                     const color = s.task === 'DELIVERY' ? 'blue' : 'red';
                     const markerHtml = `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; color:white; font-size:10px; font-weight:bold; display:flex; justify-content:center; align-items:center;">${idx+1}</div>`;
                     L.marker([s.lat, s.lng], {icon: L.divIcon({html: markerHtml, className:''})}).addTo(driverMap).bindPopup(s.name);
                     bounds.extend([s.lat, s.lng]);
                 });
-
-                // Fetch Route Geometry on Demand (To keep link short)
                 const pts = [WAREHOUSE, ...activeMission.stops, WAREHOUSE];
                 const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
                 try {
@@ -588,33 +485,20 @@
                 driverMap.fitBounds(bounds, {padding:[30,30]});
             }, 500);
 
-            // Render List (Detail Lengkap)
             const list = document.getElementById('driver-stops-list');
             const allDone = activeMission.stops.every(s => s.status === 'DONE');
             if (allDone && status === 'ACCEPTED') updateMissionStatus('COMPLETED');
-
             list.innerHTML = activeMission.stops.map((s, idx) => {
-                const isDone = s.status === 'DONE';
-                const isAccepted = status === 'ACCEPTED';
-                
+                const isDone = s.status === 'DONE'; const isAccepted = status === 'ACCEPTED';
                 const itemsHtml = s.items.map(i => `<div class="font-bold text-indigo-900">• ${i.name}</div>`).join('');
-                
-                // --- NEW WA LOGIC ---
                 const rawPhone = s.phone.replace(/[^0-9]/g, '');
-                let formattedPhone = rawPhone;
-                if(rawPhone.startsWith('08')) formattedPhone = '62' + rawPhone.substring(1);
-                else if(rawPhone.startsWith('8')) formattedPhone = '62' + rawPhone;
-
-                const taskVerb = s.task === 'DELIVERY' ? 'mengantar' : 'menjemput';
+                let formattedPhone = rawPhone; if(rawPhone.startsWith('08')) formattedPhone = '62'+rawPhone.substring(1); else if(rawPhone.startsWith('8')) formattedPhone = '62'+rawPhone;
                 const taskType = s.task === 'DELIVERY' ? 'PENGANTARAN' : 'PENJEMPUTAN';
                 const unitListStr = s.items.map(i => i.name).join(', ');
-
                 const waMessage = `Halo kak ${s.name}, saya Panggih dari Kenekozo Freezer ❄️.\n\nMau info untuk *${taskType}* unit:\n*${unitListStr}*\nke alamat kakak.\n\nApakah ada orang di lokasi? Terima kasih 🙏`;
                 const waLink = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(waMessage)}`;
-                // --------------------
-
-                return `
-                <div class="bg-white border rounded-lg p-3 relative ${isDone ? 'opacity-50 bg-gray-50' : 'shadow-sm'}">
+                
+                return `<div class="bg-white border rounded-lg p-3 relative ${isDone ? 'opacity-50 bg-gray-50' : 'shadow-sm'}">
                     <div class="flex justify-between items-start">
                         <div class="flex-1 pr-14">
                             <div class="flex items-center gap-1 mb-1">
@@ -622,34 +506,25 @@
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded ${s.task === 'DELIVERY' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'}">${s.task==='DELIVERY'?'KIRIM':'AMBIL'}</span>
                                 <span class="font-bold text-sm ${isDone ? 'line-through' : ''}">${s.name}</span>
                             </div>
-                            
-                            <!-- Detail Alamat & HP -->
                             <div class="text-xs text-gray-500 mb-2 pl-6">
                                 <p class="line-clamp-2">📍 ${s.address}</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span>📞 ${s.phone}</span>
-                                    <a href="${waLink}" target="_blank" class="text-green-600 bg-green-50 px-1 rounded hover:bg-green-100 font-bold border border-green-200">Chat Customer</a>
+                                    <a href="${waLink}" target="_blank" class="text-green-600 bg-green-50 px-1 rounded hover:bg-green-100 font-bold border border-green-200">Chat</a>
                                 </div>
                             </div>
-
                             <div class="pl-6 mt-1">
                                 <div class="text-xs border-l-2 border-indigo-200 pl-2 py-1 mb-1 bg-indigo-50 rounded-r">
                                     ${itemsHtml}
                                     <div class="text-[10px] text-gray-500 mt-1">(Otot: Rp ${s.customLoadFee.toLocaleString('id-ID')})</div>
                                 </div>
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 font-bold text-xs bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 mt-1">
-                                    <i data-lucide="navigation" class="w-3 h-3"></i> Maps
-                                </a>
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 font-bold text-xs bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 mt-1"><i data-lucide="navigation" class="w-3 h-3"></i> Maps</a>
                             </div>
                         </div>
                         ${isAccepted && !isDone ? `
                         <div class="absolute right-3 top-3 flex flex-col gap-2 items-end">
-                            <button onclick="reportViaWA(${idx})" class="bg-green-600 text-white p-2 rounded-lg shadow-sm flex items-center gap-1 text-xs font-bold hover:bg-green-700">
-                                <i data-lucide="message-circle" class="w-4 h-4"></i> Lapor
-                            </button>
-                            <button onclick="markStopDone(${idx})" class="bg-gray-100 border text-gray-400 p-2 rounded-lg text-xs font-bold hover:bg-gray-200" title="Selesai">
-                                <i data-lucide="check" class="w-4 h-4"></i>
-                            </button>
+                            <button onclick="reportViaWA(${idx})" class="bg-green-600 text-white p-2 rounded-lg shadow-sm flex items-center gap-1 text-xs font-bold hover:bg-green-700"><i data-lucide="message-circle" class="w-4 h-4"></i> Lapor</button>
+                            <button onclick="markStopDone(${idx})" class="bg-gray-100 border text-gray-400 p-2 rounded-lg text-xs font-bold hover:bg-gray-200" title="Selesai"><i data-lucide="check" class="w-4 h-4"></i></button>
                         </div>` : (isDone ? '<i data-lucide="check-circle-2" class="w-6 h-6 text-green-500 absolute right-3 top-3"></i>' : '')}
                     </div>
                 </div>`;
@@ -657,7 +532,82 @@
             lucide.createIcons();
         }
 
-        // --- UTILS & REPORT ---
+        // --- NEW PDF REPORT ---
+        function downloadPDFReport() {
+            if (!activeMission) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFillColor(79, 70, 229); // Indigo
+            doc.rect(0, 0, 210, 20, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'bold');
+            doc.text("KENEKOZO LOGISTICS REPORT", 10, 13);
+
+            // Mission Details
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Tanggal: ${activeMission.date}`, 10, 30);
+            doc.text(`Mulai: ${activeMission.startTime || '-'}`, 10, 35);
+            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 40);
+            
+            // Table
+            const tableBody = activeMission.stops.map((s, i) => [
+                i+1,
+                s.name,
+                s.task === 'DELIVERY' ? 'Kirim' : 'Ambil',
+                s.items.map(x=>x.name).join('\n'), // Multi-line for items
+                `Rp ${s.customLoadFee.toLocaleString('id-ID')}`,
+                s.finishTime || 'Selesai'
+            ]);
+
+            doc.autoTable({
+                startY: 45,
+                head: [['No', 'Customer', 'Tipe', 'Unit', 'Ongkos', 'Jam Selesai']],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] },
+                styles: { fontSize: 8, cellPadding: 2 }
+            });
+
+            // Financial Summary
+            let finalY = doc.lastAutoTable.finalY + 10;
+            
+            // Box for Total
+            doc.setFillColor(245, 245, 245);
+            doc.rect(10, finalY, 100, 35, 'F');
+            doc.setFont(undefined, 'bold');
+            doc.text("RINCIAN GAJI SOPIR", 15, finalY + 7);
+            
+            doc.setFont(undefined, 'normal');
+            doc.text(`Uang Jalan (${activeMission.totalDistance}km):`, 15, finalY + 15);
+            doc.text(`Rp ${activeMission.payment.drive.toLocaleString('id-ID')}`, 80, finalY + 15, {align: 'right'});
+            
+            doc.text(`Total Ongkos Otot:`, 15, finalY + 20);
+            doc.text(`Rp ${activeMission.payment.load.toLocaleString('id-ID')}`, 80, finalY + 20, {align: 'right'});
+            
+            doc.text(`Uang Makan:`, 15, finalY + 25);
+            doc.text(`Rp ${activeMission.payment.meal.toLocaleString('id-ID')}`, 80, finalY + 25, {align: 'right'});
+            
+            doc.setFont(undefined, 'bold');
+            doc.line(15, finalY + 28, 80, finalY + 28);
+            doc.text(`TOTAL TERIMA:`, 15, finalY + 33);
+            doc.text(`Rp ${activeMission.payment.total.toLocaleString('id-ID')}`, 80, finalY + 33, {align: 'right'});
+
+            // Signatures
+            doc.text("Admin Kenekozo", 15, finalY + 50);
+            doc.text("( ....................... )", 15, finalY + 70);
+            
+            doc.text("Penerima (Sopir)", 70, finalY + 50);
+            doc.text("( ....................... )", 70, finalY + 70);
+
+            doc.save(`Laporan_Kenekozo_${Date.now()}.pdf`);
+        }
+
+        // --- OLD FUNCTIONS ---
         function updateMissionStatus(st) {
             if(st === 'REJECTED' && !confirm('Hapus misi?')) return;
             if(st === 'REJECTED') { localStorage.removeItem('kenekozo_mission'); location.reload(); return; }
@@ -671,7 +621,6 @@
             localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
             renderDriverView();
         }
-
         function markStopDone(idx) {
             if(!confirm('Sudah lapor? Tandai selesai?')) return;
             activeMission.stops[idx].status = 'DONE';
@@ -679,7 +628,6 @@
             localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
             renderDriverView();
         }
-
         function reportViaWA(idx) {
             const s = activeMission.stops[idx];
             const now = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
@@ -687,37 +635,6 @@
             const msg = `Lapor Bu! 🫡\n✅ ${s.name}\n📋 ${units}\n🕒 ${now}\nFoto bukti 👇`;
             window.open(`https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         }
-
-        function downloadReport() {
-            let txt = `=== LAPORAN PENGIRIMAN KENEKOZO ===\n`;
-            txt += `Tanggal: ${activeMission.date}\n`;
-            txt += `Status: SELESAI\n`;
-            txt += `Mulai Jalan: ${activeMission.startTime || '-'}\n`;
-            txt += `Total Jarak: ${activeMission.totalDistance} KM\n\n`;
-            
-            txt += `--- RINCIAN PENGERJAAN ---\n`;
-            activeMission.stops.forEach((s, i) => {
-                txt += `${i+1}. ${s.name} (${s.task === 'DELIVERY' ? 'Kirim' : 'Ambil'})\n`;
-                txt += `   Waktu: ${s.finishTime || 'Selesai'}\n`;
-                txt += `   Unit: ${s.items.map(x=>x.name).join(', ')}\n`;
-                txt += `   Ongkos Otot: Rp ${s.customLoadFee.toLocaleString('id-ID')}\n\n`;
-            });
-
-            txt += `--- HITUNGAN GAJI ---\n`;
-            txt += `1. Uang Jalan (${activeMission.totalDistance}km x 1000): Rp ${activeMission.payment.drive.toLocaleString('id-ID')}\n`;
-            txt += `2. Uang Otot: Rp ${activeMission.payment.load.toLocaleString('id-ID')}\n`;
-            txt += `3. Uang Makan: Rp ${activeMission.payment.meal.toLocaleString('id-ID')}\n`;
-            txt += `===============================\n`;
-            txt += `TOTAL DIBAYAR: Rp ${activeMission.payment.total.toLocaleString('id-ID')}\n`;
-
-            const blob = new Blob([txt], { type: 'text/plain' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Laporan_Kenekozo_${Date.now()}.txt`;
-            a.click();
-        }
-
         function switchRole(r) {
             currentRole = r;
             document.getElementById('view-admin').className = r === 'admin' ? '' : 'hidden';
@@ -727,8 +644,6 @@
             if(r==='driver') loadMissionFromStorage();
             else setTimeout(() => map.invalidateSize(), 100);
         }
-
-        // Copy fallback
         function copyShareLink() {
             const el = document.getElementById("share-link-input");
             el.select(); document.execCommand('copy'); alert("Link disalin!");
