@@ -138,6 +138,7 @@
                     <div>
                         <p class="font-bold text-sm" id="m-date">-</p>
                         <p id="m-start-time" class="text-xs text-green-400 mt-1 hidden font-mono">🚀 Mulai: --:--</p>
+                        <p id="m-end-time" class="text-xs text-blue-400 mt-1 hidden font-mono">🏁 Selesai: --:--</p>
                     </div>
                     <span id="m-status-badge" class="bg-yellow-400 text-xs px-2 py-1 rounded font-bold text-black">PENDING</span>
                 </div>
@@ -165,18 +166,33 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
+                    <!-- Action Buttons (START/PENDING) -->
                     <div class="p-4 flex gap-3 border-b" id="action-buttons">
                         <button onclick="updateMissionStatus('REJECTED')" class="flex-1 border border-red-200 text-red-600 py-3 rounded-lg text-sm font-bold hover:bg-red-50">Tolak</button>
-                        <button onclick="updateMissionStatus('ACCEPTED')" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 flex justify-center items-center gap-2">
-                            <span>MULAI JALAN</span> 🚀
-                        </button>
+                        <div class="flex-1 flex flex-col gap-1">
+                            <button onclick="updateMissionStatus('ACCEPTED')" class="w-full bg-indigo-600 text-white py-3 rounded-lg text-sm font-bold shadow hover:bg-indigo-700 flex justify-center items-center gap-2">
+                                <span>MULAI JALAN</span> 🚀
+                            </button>
+                            <p class="text-[10px] text-gray-400 text-center">Klik saat kendaraan siap berangkat</p>
+                        </div>
                     </div>
                     
-                    <!-- Finish & Report Area -->
+                    <!-- Back to Garage Button (NEW) -->
+                    <div id="finish-garage-btn" class="hidden p-4 border-b border-indigo-100 bg-yellow-50">
+                        <div class="flex flex-col gap-1">
+                            <button onclick="updateMissionStatus('COMPLETED')" class="w-full bg-green-600 text-white py-3 rounded-lg text-sm font-bold shadow hover:bg-green-700 flex justify-center items-center gap-2">
+                                <span>TIBA DI GARASI (SELESAI)</span> 🏁
+                            </button>
+                            <p class="text-[10px] text-green-700 text-center">Klik saat mobil sudah parkir di garasi kembali</p>
+                        </div>
+                    </div>
+
+                    <!-- Finish & Report Area (COMPLETED) -->
                     <div id="finish-form" class="hidden p-4 bg-green-50 text-center border-b border-green-100">
-                        <p class="text-sm font-bold text-green-800 mb-1">Misi Selesai! 🎉</p>
-                        <p class="text-xs text-green-700 mb-3">Semua titik sudah dikirim/diambil.</p>
+                        <div class="mb-3">
+                            <p class="text-sm font-bold text-green-800">Misi Selesai! 🎉</p>
+                            <p class="text-[10px] text-green-600">Mobil kembali ke garasi: <span id="finish-time-display" class="font-mono font-bold">-</span></p>
+                        </div>
                         <div class="flex gap-2">
                             <!-- TOMBOL DOWNLOAD PDF -->
                             <button onclick="downloadPDFReport()" class="flex-1 bg-white border border-red-600 text-red-600 py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2 hover:bg-red-50">
@@ -409,7 +425,7 @@
                 const missionObj = {
                     id: 'M-' + Date.now(),
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-                    adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, startTime: null, 
+                    adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, startTime: null, endTime: null,
                     payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
                 const jsonString = JSON.stringify(missionObj);
@@ -446,24 +462,49 @@
             if (!activeMission) return;
             document.getElementById('no-mission').classList.add('hidden');
             document.getElementById('active-mission-card').classList.remove('hidden');
+
             document.getElementById('m-date').innerText = activeMission.date;
             document.getElementById('m-dist').innerText = activeMission.totalDistance;
             document.getElementById('m-total-pay').innerText = 'Rp ' + activeMission.payment.total.toLocaleString('id-ID');
             document.getElementById('pay-drive').innerText = 'Rp ' + activeMission.payment.drive.toLocaleString('id-ID');
             document.getElementById('pay-load').innerText = 'Rp ' + activeMission.payment.load.toLocaleString('id-ID');
+
             const status = activeMission.status || 'PENDING';
             if (activeMission.startTime) {
                 document.getElementById('m-start-time').innerText = `🚀 Mulai: ${activeMission.startTime}`;
                 document.getElementById('m-start-time').classList.remove('hidden');
             }
+            if (activeMission.endTime) {
+                document.getElementById('m-end-time').innerText = `🏁 Selesai: ${activeMission.endTime}`;
+                document.getElementById('m-end-time').classList.remove('hidden');
+            }
+
             const actionBtns = document.getElementById('action-buttons');
+            const garageBtn = document.getElementById('finish-garage-btn');
             const finishForm = document.getElementById('finish-form');
             const badge = document.getElementById('m-status-badge');
-            badge.innerText = status === 'ACCEPTED' ? 'SEDANG JALAN' : status;
-            if (status === 'PENDING') { actionBtns.classList.remove('hidden'); finishForm.classList.add('hidden'); } 
-            else if (status === 'ACCEPTED') { actionBtns.classList.add('hidden'); finishForm.classList.add('hidden'); } 
-            else if (status === 'COMPLETED') { actionBtns.classList.add('hidden'); finishForm.classList.remove('hidden'); }
             
+            badge.innerText = status === 'ACCEPTED' ? 'SEDANG JALAN' : status;
+            
+            // Logic Display
+            actionBtns.classList.add('hidden');
+            garageBtn.classList.add('hidden');
+            finishForm.classList.add('hidden');
+
+            if (status === 'PENDING') {
+                actionBtns.classList.remove('hidden');
+            } else if (status === 'ACCEPTED') {
+                // Cek apakah semua stop sudah DONE?
+                const allDone = activeMission.stops.every(s => s.status === 'DONE');
+                if(allDone) {
+                    garageBtn.classList.remove('hidden');
+                }
+            } else if (status === 'COMPLETED') {
+                finishForm.classList.remove('hidden');
+                document.getElementById('finish-time-display').innerText = activeMission.endTime || '-';
+            }
+
+            // Draw Route
             setTimeout(async () => {
                 initDriverMap(); driverMap.invalidateSize();
                 driverMap.eachLayer((l) => { if (l instanceof L.Marker || l instanceof L.Polyline) driverMap.removeLayer(l); });
@@ -486,8 +527,6 @@
             }, 500);
 
             const list = document.getElementById('driver-stops-list');
-            const allDone = activeMission.stops.every(s => s.status === 'DONE');
-            if (allDone && status === 'ACCEPTED') updateMissionStatus('COMPLETED');
             list.innerHTML = activeMission.stops.map((s, idx) => {
                 const isDone = s.status === 'DONE'; const isAccepted = status === 'ACCEPTED';
                 const itemsHtml = s.items.map(i => `<div class="font-bold text-indigo-900">• ${i.name}</div>`).join('');
@@ -551,8 +590,9 @@
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
             doc.text(`Tanggal: ${activeMission.date}`, 10, 30);
-            doc.text(`Mulai: ${activeMission.startTime || '-'}`, 10, 35);
-            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 40);
+            doc.text(`Mulai: ${activeMission.startTime || '-'} (Siap berangkat)`, 10, 35);
+            doc.text(`Selesai: ${activeMission.endTime || '-'} (Tiba di garasi)`, 10, 40);
+            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 45);
             
             // Table
             const tableBody = activeMission.stops.map((s, i) => [
@@ -565,7 +605,7 @@
             ]);
 
             doc.autoTable({
-                startY: 45,
+                startY: 50,
                 head: [['No', 'Customer', 'Tipe', 'Unit', 'Ongkos', 'Jam Selesai']],
                 body: tableBody,
                 theme: 'grid',
@@ -597,26 +637,45 @@
             doc.text(`TOTAL TERIMA:`, 15, finalY + 33);
             doc.text(`Rp ${activeMission.payment.total.toLocaleString('id-ID')}`, 80, finalY + 33, {align: 'right'});
 
-            // Signatures
-            doc.text("Admin Kenekozo", 15, finalY + 50);
-            doc.text("( ....................... )", 15, finalY + 70);
+            // Digital Validation
+            finalY += 45;
+            doc.setFillColor(240, 255, 240);
+            doc.setDrawColor(0, 128, 0);
+            doc.roundedRect(10, finalY, 190, 20, 3, 3, 'FD');
             
-            doc.text("Penerima (Sopir)", 70, finalY + 50);
-            doc.text("( ....................... )", 70, finalY + 70);
+            doc.setTextColor(0, 100, 0);
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text("VALIDASI DIGITAL SISTEM", 15, finalY + 7);
+            
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(60, 60, 60);
+            doc.text("Laporan ini dibuat otomatis oleh sistem Kenekozo Logistics.", 15, finalY + 13);
+            doc.text("Pembayaran gaji dilakukan via transfer online. Dokumen ini sah tanpa tanda tangan basah.", 15, finalY + 17);
 
             doc.save(`Laporan_Kenekozo_${Date.now()}.pdf`);
         }
 
-        // --- OLD FUNCTIONS ---
         function updateMissionStatus(st) {
             if(st === 'REJECTED' && !confirm('Hapus misi?')) return;
             if(st === 'REJECTED') { localStorage.removeItem('kenekozo_mission'); location.reload(); return; }
+            
+            const now = new Date();
+            const timeStr = `${now.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}, ${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`;
+
             if(st === 'ACCEPTED' && !activeMission.startTime) {
-                const now = new Date();
-                activeMission.startTime = `${now.toLocaleDateString('id-ID', {day:'numeric', month:'short'})}, ${now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}`;
+                activeMission.startTime = timeStr;
                 const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Bismillah, saya jalan ya Bu! 🚛💨\n🕒 ${activeMission.startTime}`)}`;
                 window.open(url, '_blank');
             }
+            
+            if(st === 'COMPLETED' && !activeMission.endTime) {
+                activeMission.endTime = timeStr;
+                // Optional: Lapor Balik Garasi
+                const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Alhamdulillah, sudah sampai garasi Bu! 🏁\n🕒 ${activeMission.endTime}\n\nMisi selesai.`)}`;
+                window.open(url, '_blank');
+            }
+
             activeMission.status = st;
             localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
             renderDriverView();
