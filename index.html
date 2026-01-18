@@ -69,11 +69,11 @@
             </div>
 
             <!-- Manual Toggle -->
-            <details class="mb-4">
-                <summary class="text-xs font-bold text-gray-500 cursor-pointer mb-2">Opsi Manual & Peta Admin</summary>
+            <details class="mb-4" open>
+                <summary class="text-xs font-bold text-gray-500 cursor-pointer mb-2">Peta & Opsi Manual</summary>
                 <div class="bg-white p-3 rounded-xl border border-gray-200">
                     <div id="map" class="mb-3"></div>
-                    <p class="text-[10px] text-gray-400 text-center mb-2">Klik peta untuk ambil koordinat manual</p>
+                    <p class="text-[10px] text-gray-400 text-center mb-2">Klik peta untuk ambil koordinat</p>
                     <div class="space-y-2">
                         <input type="text" id="cust-name" class="w-full p-2 border rounded text-xs" placeholder="Nama Customer">
                         <div class="grid grid-cols-2 gap-2">
@@ -102,7 +102,7 @@
             <div id="share-section" class="hidden bg-green-50 p-4 rounded-xl border border-green-200 mt-4">
                 <h3 class="font-bold text-green-800 flex items-center gap-2 mb-2"><i data-lucide="link" class="w-4 h-4"></i> Link Misi</h3>
                 
-                <!-- NEW: Salary Slip Button -->
+                <!-- Salary Slip Button -->
                 <button onclick="openSalaryModal()" class="w-full bg-white border border-indigo-300 text-indigo-700 py-2 rounded mb-3 text-sm font-bold hover:bg-indigo-50 flex justify-center items-center gap-2 shadow-sm">
                     <i data-lucide="banknote" class="w-4 h-4"></i> BUAT STRUK GAJI (Admin)
                 </button>
@@ -230,6 +230,12 @@
 
                     <!-- Stops List -->
                     <div class="bg-gray-50 p-2">
+                        <div class="bg-yellow-50 border border-yellow-200 p-2 text-xs text-yellow-800 rounded mb-2 flex items-start gap-2">
+                            <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <b>Tips Pantau:</b> Sopir cukup kirim <b>Live Location</b> di WA saat berangkat. Centang tugas di sini tanpa perlu lapor tiap titik.
+                            </div>
+                        </div>
                         <h3 class="font-bold text-gray-500 text-xs px-2 py-2">DAFTAR TUJUAN</h3>
                         <div id="driver-stops-list" class="space-y-3"></div>
                     </div>
@@ -257,6 +263,47 @@
                         <b class="text-red-700">BERAT (Rp 25.000)</b>
                         <p class="text-gray-500">Box 500-750 Liter (Jumbo)</p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL EDIT STOP -->
+        <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[70] hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-4 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center border-b pb-2 mb-3">
+                    <h3 class="font-bold text-lg text-indigo-900">Edit Data Tujuan</h3>
+                    <button onclick="closeEditModal()" class="text-gray-400 hover:text-red-500"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <input type="hidden" id="edit-index">
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Nama Customer</label>
+                        <input type="text" id="edit-name" class="w-full p-2 border rounded text-sm font-bold focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Alamat</label>
+                        <textarea id="edit-address" rows="2" class="w-full p-2 border rounded text-xs focus:ring-2 ring-indigo-500 outline-none"></textarea>
+                    </div>
+                    <div class="bg-blue-50 p-3 rounded border border-blue-200">
+                        <label class="block text-xs font-bold text-blue-800 mb-1">Lokasi Peta (Koordinat)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="edit-latlng" class="w-full p-2 border rounded text-xs bg-white text-gray-600" placeholder="-7.xxx, 110.xxx" readonly>
+                        </div>
+                        <div class="mt-2 text-[10px] text-blue-600 flex items-center gap-1">
+                            <i data-lucide="map-pin" class="w-3 h-3"></i>
+                            <span>Klik langsung di Peta Utama untuk update titik!</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Ongkos Otot (Rp)</label>
+                        <input type="number" id="edit-fee" class="w-full p-2 border rounded text-sm focus:ring-2 ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-5">
+                    <button onclick="closeEditModal()" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold text-xs hover:bg-gray-300">Batal</button>
+                    <button onclick="saveEditStop()" class="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold text-xs hover:bg-indigo-700 shadow-md">Simpan Perubahan</button>
                 </div>
             </div>
         </div>
@@ -336,6 +383,11 @@
             </div>
         </div>
 
+        <!-- Toast Notification (Popup Kecil) -->
+        <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-xs hidden z-50 transition-opacity duration-300">
+            ✅ Status tersimpan (Offline)
+        </div>
+
     </div>
 
     <script>
@@ -347,6 +399,7 @@
         let stops = []; 
         let activeMission = null;
         let selectedCoords = null;
+        let editMarker = null; // Marker sementara saat edit
 
         window.onload = function() {
             initAdminMap();
@@ -373,17 +426,37 @@
             if(savedPhone) document.getElementById('admin-phone').value = savedPhone;
         };
 
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 2000);
+        }
+
         function initAdminMap() {
             if (map) return; 
             if (!document.getElementById('map')) return; 
             map = L.map('map').setView([WAREHOUSE.lat, WAREHOUSE.lng], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
             L.marker([WAREHOUSE.lat, WAREHOUSE.lng]).addTo(map).bindPopup("Gudang Kenekozo");
+            
             map.on('click', function(e) {
                 if (currentRole !== 'admin') return;
+                
+                const latLngStr = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+                
+                // JIKA MODAL EDIT TERBUKA, UPDATE INPUT EDIT
+                if (!document.getElementById('edit-modal').classList.contains('hidden')) {
+                     document.getElementById('edit-latlng').value = latLngStr;
+                     if(editMarker) map.removeLayer(editMarker);
+                     editMarker = L.marker(e.latlng, {draggable:true}).addTo(map);
+                     return;
+                }
+
+                // Default behavior (Manual Add)
                 if (selectedCoords) map.removeLayer(selectedCoords);
                 selectedCoords = L.marker(e.latlng, {draggable: true}).addTo(map);
-                document.getElementById('cust-coord').value = `${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+                document.getElementById('cust-coord').value = latLngStr;
             });
         }
 
@@ -406,17 +479,31 @@
             else {
                 renderDraftList();
                 document.getElementById('bulk-input').value = ''; 
-                stops.forEach(s => {
+                
+                // Add Markers
+                const validStops = stops.filter(s => s.lat !== 0);
+                validStops.forEach(s => {
                     const m = L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
                     adminMarkers.push(m);
                 });
-                const bounds = L.latLngBounds(stops.map(s => [s.lat, s.lng]));
-                bounds.extend([WAREHOUSE.lat, WAREHOUSE.lng]);
-                map.fitBounds(bounds, {padding: [50,50]});
+                
+                // Fit bounds
+                if(validStops.length > 0) {
+                    const bounds = L.latLngBounds(validStops.map(s => [s.lat, s.lng]));
+                    bounds.extend([WAREHOUSE.lat, WAREHOUSE.lng]);
+                    map.fitBounds(bounds, {padding: [50,50]});
+                }
             }
         }
 
+        // ... (Parsing functions remain same) ...
         function parseReceiptFormat(text) {
+            const blocks = text.split(/(?=PESANAN SEWA|DATA PENYEWA)/gi).filter(t => t.trim().length > 10);
+            if (blocks.length === 0) parseSingleReceipt(text); 
+            else blocks.forEach(block => parseSingleReceipt(block));
+        }
+
+        function parseSingleReceipt(text) {
             const nameMatch = text.match(/Nama:\s*(.+)/);
             const waMatch = text.match(/WA:\s*(.+)/);
             const addrMatch = text.match(/ALAMAT PENGIRIMAN\s*\n\s*(.+?)\s*(\(Maps|$)/i); 
@@ -436,12 +523,13 @@
                     }
                 }
             });
-            if (nameMatch && mapsMatch) {
+            if (nameMatch) {
+                const lat = mapsMatch ? parseFloat(mapsMatch[1]) : 0;
+                const lng = mapsMatch ? parseFloat(mapsMatch[2]) : 0;
+                const addr = addrMatch ? addrMatch[1].trim() : (mapsMatch ? 'Alamat sesuai Maps' : '⚠️ ALAMAT/MAPS TIDAK TERDETEKSI');
                 stops.push({
-                    id: Date.now(), task: 'DELIVERY', name: nameMatch[1].trim(),
-                    phone: waMatch ? waMatch[1].trim() : '-',
-                    address: addrMatch ? addrMatch[1].trim() : 'Alamat sesuai Maps',
-                    lat: parseFloat(mapsMatch[1]), lng: parseFloat(mapsMatch[2]),
+                    id: Date.now() + Math.random(), task: 'DELIVERY', name: nameMatch[1].trim(),
+                    phone: waMatch ? waMatch[1].trim() : '-', address: addr, lat: lat, lng: lng,
                     status: 'PENDING', size: 'custom', items: items, customLoadFee: totalLoadFee 
                 });
             }
@@ -450,13 +538,19 @@
         function parseLegacyListFormat(text) {
             const lines = text.split('\n');
             let currentTask = 'DELIVERY'; let currentItem = {}; let isParsingItem = false;
+            const pushCurrentItem = () => {
+                if (isParsingItem && currentItem.name) {
+                    if (!currentItem.lat) { currentItem.lat = 0; currentItem.lng = 0; currentItem.address = "⚠️ CEK LOKASI (Maps tidak terbaca)"; }
+                    stops.push(currentItem);
+                }
+            };
             lines.forEach(line => {
                 const cleanLine = line.trim();
                 if (cleanLine.match(/(📦|:package:)?\s*PENGIRIMAN/i)) currentTask = 'DELIVERY';
                 if (cleanLine.match(/(🚚|:truck:)?\s*PENJEMPUTAN/i)) currentTask = 'PICKUP';
-                const nameMatch = cleanLine.match(/^\d+\.\s*(.+?)(?:\(|$)/);
+                const nameMatch = cleanLine.match(/^\d+[\.\)]?\s*(.+?)(?:\(|$|[\n\r])/);
                 if (nameMatch) {
-                    if (isParsingItem && currentItem.name && currentItem.lat) stops.push(currentItem);
+                    pushCurrentItem();
                     isParsingItem = true;
                     const phoneMatch = cleanLine.match(/\((08\d+)\)/);
                     currentItem = {
@@ -465,17 +559,29 @@
                         status: 'PENDING', size: 'small', customLoadFee: 0, items: []
                     };
                 }
-                const unitMatch = cleanLine.match(/(🧊|:ice:)?\s*Unit:\s*(.+)/i);
-                if (unitMatch && isParsingItem) {
-                    const unitName = unitMatch[2]; const fee = calculateUnitFee(unitName);
-                    currentItem.items = [{name: unitName, fee: fee}]; currentItem.customLoadFee = fee;
+                if (isParsingItem) {
+                    const unitMatch = cleanLine.match(/(🧊|:ice:)?\s*Unit:\s*(.+)/i);
+                    if (unitMatch) {
+                        const unitName = unitMatch[2]; const fee = calculateUnitFee(unitName);
+                        currentItem.items = [{name: unitName, fee: fee}]; currentItem.customLoadFee = fee;
+                    }
+                    const locMatch = cleanLine.match(/Lok:\s*(.+)/i);
+                    if (locMatch) {
+                        // Check if loc contains a URL, if so clean it
+                        let addr = locMatch[1].trim();
+                        if(addr.includes('http')) {
+                            // Split by http and take the first part or just say "Lihat di Peta"
+                            const parts = addr.split('http');
+                            addr = parts[0].trim() || 'Lihat di Peta 🗺️';
+                        }
+                        currentItem.address = addr;
+                    }
+                    
+                    const mapsMatch = cleanLine.match(/maps\.google\.com\/\?q=([-0-9\.]+),([-0-9\.]+)/);
+                    if (mapsMatch) { currentItem.lat = parseFloat(mapsMatch[1]); currentItem.lng = parseFloat(mapsMatch[2]); }
                 }
-                const locMatch = cleanLine.match(/Lok:\s*(.+)/i);
-                if (locMatch && isParsingItem) currentItem.address = locMatch[1].trim();
-                const mapsMatch = cleanLine.match(/maps\.google\.com\/\?q=([-0-9\.]+),([-0-9\.]+)/);
-                if (mapsMatch && isParsingItem) { currentItem.lat = parseFloat(mapsMatch[1]); currentItem.lng = parseFloat(mapsMatch[2]); }
             });
-            if (isParsingItem && currentItem.name && currentItem.lat) stops.push(currentItem);
+            pushCurrentItem();
         }
 
         function calculateUnitFee(itemName) {
@@ -485,23 +591,113 @@
             return 10000; 
         }
 
+        // --- EDIT FUNCTIONS ---
         function renderDraftList() {
             const list = document.getElementById('stops-ul');
             const container = document.getElementById('draft-list');
             if (stops.length > 0) {
                 container.classList.remove('hidden');
-                list.innerHTML = stops.map((s, idx) => `
-                    <li class="border-b pb-2">
+                list.innerHTML = stops.map((s, idx) => {
+                    const isError = s.lat === 0 && s.lng === 0;
+                    const bgClass = isError ? 'bg-red-50 border-red-200' : 'border-b';
+                    const textClass = isError ? 'text-red-600' : 'text-gray-500';
+                    const errBadge = isError ? '<span class="bg-red-500 text-white text-[10px] px-1 rounded ml-2">DATA TIDAK LENGKAP</span>' : '';
+
+                    return `
+                    <li class="${bgClass} pb-2 p-1 rounded relative group hover:bg-gray-50">
                         <div class="flex justify-between font-bold text-gray-800">
-                            <span>${idx+1}. ${s.name}</span>
-                            <span class="text-xs bg-gray-100 px-2 rounded">Rp ${s.customLoadFee/1000}k</span>
+                            <span>${idx+1}. ${s.name} ${errBadge}</span>
+                            <div class="flex gap-1">
+                                <span class="text-xs bg-gray-100 px-2 rounded self-center">Rp ${s.customLoadFee/1000}k</span>
+                                <button onclick="openEditStop(${idx})" class="text-blue-500 hover:text-blue-700 p-1 bg-white border rounded shadow-sm" title="Edit Data"><i data-lucide="pencil" class="w-3 h-3"></i></button>
+                                <button onclick="removeStop(${idx})" class="text-red-500 hover:text-red-700 p-1 bg-white border rounded shadow-sm" title="Hapus"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                            </div>
                         </div>
-                        <div class="text-xs text-gray-500 truncate">${s.address}</div>
+                        <div class="text-xs ${textClass} truncate pr-16">${s.address}</div>
+                        ${isError ? `<div class="text-[10px] text-red-500 mt-1">⚠️ Lokasi Maps belum ada. Klik tombol pensil untuk tambah titik peta.</div>` : ''}
                     </li>
-                `).join('');
+                `}).join('');
+                lucide.createIcons();
             } else { container.classList.add('hidden'); }
         }
-        
+
+        function openEditStop(idx) {
+            const s = stops[idx];
+            document.getElementById('edit-index').value = idx;
+            document.getElementById('edit-name').value = s.name;
+            document.getElementById('edit-address').value = s.address;
+            document.getElementById('edit-fee').value = s.customLoadFee;
+            
+            const latStr = s.lat === 0 ? '' : s.lat;
+            const lngStr = s.lng === 0 ? '' : s.lng;
+            document.getElementById('edit-latlng').value = latStr && lngStr ? `${latStr}, ${lngStr}` : '';
+            
+            // Show modal
+            document.getElementById('edit-modal').classList.remove('hidden');
+            
+            // Set marker on map if valid
+            if(s.lat !== 0) {
+                if(editMarker) map.removeLayer(editMarker);
+                editMarker = L.marker([s.lat, s.lng], {draggable:true}).addTo(map);
+                map.setView([s.lat, s.lng], 15);
+            } else {
+                if(editMarker) map.removeLayer(editMarker);
+                map.setView([WAREHOUSE.lat, WAREHOUSE.lng], 10);
+            }
+        }
+
+        function saveEditStop() {
+            const idx = document.getElementById('edit-index').value;
+            const name = document.getElementById('edit-name').value;
+            const addr = document.getElementById('edit-address').value;
+            const fee = parseInt(document.getElementById('edit-fee').value) || 0;
+            const latLngStr = document.getElementById('edit-latlng').value;
+
+            if(!latLngStr.includes(',')) return alert("Koordinat belum dipilih! Klik peta dulu.");
+            
+            const [lat, lng] = latLngStr.split(',').map(parseFloat);
+
+            stops[idx].name = name;
+            stops[idx].address = addr;
+            stops[idx].customLoadFee = fee;
+            stops[idx].lat = lat;
+            stops[idx].lng = lng;
+
+            closeEditModal();
+            
+            // Refresh Markers & List
+            adminMarkers.forEach(m => map.removeLayer(m));
+            adminMarkers = [];
+            const validStops = stops.filter(s => s.lat !== 0);
+            validStops.forEach(s => {
+                const m = L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
+                adminMarkers.push(m);
+            });
+            renderDraftList();
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            if(editMarker) map.removeLayer(editMarker);
+            editMarker = null;
+        }
+
+        function removeStop(idx) {
+            if(confirm("Hapus data ini?")) {
+                stops.splice(idx, 1);
+                renderDraftList();
+                // Refresh map
+                adminMarkers.forEach(m => map.removeLayer(m));
+                adminMarkers = [];
+                stops.forEach(s => {
+                    if(s.lat !== 0) {
+                        const m = L.marker([s.lat, s.lng]).addTo(map).bindPopup(s.name);
+                        adminMarkers.push(m);
+                    }
+                });
+            }
+        }
+
         // --- NEW: Minification Logic to reduce URL size ---
         function minifyMission(m) {
             return {
@@ -534,29 +730,115 @@
             };
         }
 
+        // --- NEW OPTIMIZED ROUTING (BRUTE FORCE TSP FOR SMALL N) ---
+        function optimizeRoute(start, points) {
+            if (points.length <= 5) {
+                // Brute force permutations to find TRUE shortest path
+                let bestOrder = points;
+                let minDist = Infinity;
+                
+                const permutations = permute(points);
+                permutations.forEach(order => {
+                    let d = 0;
+                    let curr = start;
+                    order.forEach(p => {
+                        d += calcDist(curr, p);
+                        curr = p;
+                    });
+                    d += calcDist(curr, start); // Return to base
+                    
+                    if (d < minDist) {
+                        minDist = d;
+                        bestOrder = order;
+                    }
+                });
+                return bestOrder;
+            } else {
+                // Greedy Nearest Neighbor (Faster for many points)
+                let sorted = [];
+                let curr = start;
+                let pool = [...points];
+                while(pool.length > 0) {
+                    let nearestIdx = -1;
+                    let nearestDist = Infinity;
+                    pool.forEach((p, i) => {
+                        const d = calcDist(curr, p);
+                        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+                    });
+                    curr = pool[nearestIdx];
+                    sorted.push(curr);
+                    pool.splice(nearestIdx, 1);
+                }
+                return sorted;
+            }
+        }
+
+        function calcDist(p1, p2) {
+            return Math.sqrt(Math.pow(p1.lat - p2.lat, 2) + Math.pow(p1.lng - p2.lng, 2));
+        }
+
+        function permute(permutation) {
+            var length = permutation.length,
+                result = [permutation.slice()],
+                c = new Array(length).fill(0),
+                i = 1, k, p;
+            while (i < length) {
+                if (c[i] < i) {
+                    k = i % 2 && c[i];
+                    p = permutation[i];
+                    permutation[i] = permutation[k];
+                    permutation[k] = p;
+                    ++c[i];
+                    i = 1;
+                    result.push(permutation.slice());
+                } else {
+                    c[i] = 0;
+                    ++i;
+                }
+            }
+            return result;
+        }
+
         async function generateMission() {
             if (stops.length === 0) return;
+            
+            // Check for invalid stops
+            if (stops.some(s => s.lat === 0 && s.lng === 0)) {
+                if(!confirm("⚠️ PERINGATAN: Ada data yang lokasi Maps-nya tidak terbaca (ditandai merah). Jika dilanjutkan, rute mungkin error. Lanjut?")) return;
+            }
+
             const adminPhone = document.getElementById('admin-phone').value;
             localStorage.setItem('kenekozo_phone', adminPhone);
-            let sortedStops = []; let currentLoc = WAREHOUSE; let remaining = [...stops];
-            while(remaining.length > 0) {
-                let nearestIdx = 0; let minDist = Infinity;
-                remaining.forEach((stop, idx) => {
-                    const d = Math.sqrt(Math.pow(stop.lat - currentLoc.lat, 2) + Math.pow(stop.lng - currentLoc.lng, 2));
-                    if (d < minDist) { minDist = d; nearestIdx = idx; }
-                });
-                currentLoc = remaining[nearestIdx]; sortedStops.push(currentLoc); remaining.splice(nearestIdx, 1);
-            }
-            const routePoints = [WAREHOUSE, ...sortedStops, WAREHOUSE];
+            
+            let validStops = stops.filter(s => s.lat !== 0);
+            let invalidStops = stops.filter(s => s.lat === 0);
+            
+            // USE NEW OPTIMIZER
+            let sortedStops = optimizeRoute(WAREHOUSE, validStops);
+            
+            // Re-add invalid stops at the end so they are not lost
+            sortedStops = [...sortedStops, ...invalidStops];
+
+            const routePoints = [WAREHOUSE, ...validStops, WAREHOUSE]; // Only route valid points
             const coordsString = routePoints.map(p => `${p.lng},${p.lat}`).join(';');
             const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+            
             const btn = document.querySelector('#draft-list button');
             const oriText = btn.innerHTML;
             btn.innerHTML = '⏳ Proses...'; btn.disabled = true;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                const totalKM = Math.ceil((data.routes[0].distance / 1000) * 1.05);
+                
+                // Fallback distance calculation if routing fails (or just 1 invalid stop)
+                let totalKM = 0;
+                if(data.routes && data.routes[0]) {
+                     totalKM = Math.ceil((data.routes[0].distance / 1000) * 1.05);
+                } else {
+                     totalKM = 10; // Default fallback
+                     alert("Gagal hitung rute otomatis (Mungkin karena data lokasi error). Jarak diset manual ke 10km.");
+                }
+
                 let payLoad = 0;
                 sortedStops.forEach(s => { if (s.customLoadFee) payLoad += s.customLoadFee; else payLoad += PRICES.load[s.size]; });
                 const payDrive = totalKM * PRICES.perKM; const payMeal = PRICES.meal;
@@ -587,7 +869,7 @@
                 activeMission = missionObj;
                 stops = []; adminMarkers.forEach(m => map.removeLayer(m)); adminMarkers = [];
                 renderDraftList(); document.getElementById('bulk-input').value = '';
-            } catch (e) { console.error(e); alert("Gagal hitung rute/koneksi."); }
+            } catch (e) { console.error(e); alert("Gagal hitung rute/koneksi. Cek internet atau data lokasi."); }
             btn.innerHTML = oriText; btn.disabled = false;
         }
 
@@ -689,18 +971,21 @@
                 L.marker([WAREHOUSE.lat, WAREHOUSE.lng]).addTo(driverMap);
                 const bounds = new L.LatLngBounds(); bounds.extend([WAREHOUSE.lat, WAREHOUSE.lng]);
                 activeMission.stops.forEach((s, idx) => {
+                    if(s.lat === 0 && s.lng === 0) return; // Skip invalid markers on map
                     const color = s.task === 'DELIVERY' ? 'blue' : 'red';
                     const markerHtml = `<div style="background:${color}; width:16px; height:16px; border-radius:50%; border:2px solid white; color:white; font-size:10px; font-weight:bold; display:flex; justify-content:center; align-items:center;">${idx+1}</div>`;
                     L.marker([s.lat, s.lng], {icon: L.divIcon({html: markerHtml, className:''})}).addTo(driverMap).bindPopup(s.name);
                     bounds.extend([s.lat, s.lng]);
                 });
-                const pts = [WAREHOUSE, ...activeMission.stops, WAREHOUSE];
-                const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
-                try {
-                    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-                    const d = await res.json();
-                    L.geoJSON(d.routes[0].geometry, { style: { color: '#3b82f6', weight: 4, opacity: 0.7 } }).addTo(driverMap);
-                } catch(e){}
+                const pts = [WAREHOUSE, ...activeMission.stops.filter(s=>s.lat!==0), WAREHOUSE];
+                if(pts.length > 2) {
+                    const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
+                    try {
+                        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                        const d = await res.json();
+                        L.geoJSON(d.routes[0].geometry, { style: { color: '#3b82f6', weight: 4, opacity: 0.7 } }).addTo(driverMap);
+                    } catch(e){}
+                }
                 driverMap.fitBounds(bounds, {padding:[30,30]});
             }, 500);
 
@@ -715,6 +1000,11 @@
                 const waMessage = `Halo kak ${s.name}, saya Panggih dari Kenekozo Freezer ❄️.\n\nMau info untuk *${taskType}* unit:\n*${unitListStr}*\nke alamat kakak.\n\nApakah ada orang di lokasi? Terima kasih 🙏`;
                 const waLink = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(waMessage)}`;
                 
+                // Handle invalid Maps
+                const isMapError = s.lat === 0;
+                const mapLink = isMapError ? '#' : `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+                const mapStyle = isMapError ? 'bg-gray-200 text-gray-400 pointer-events-none' : 'text-blue-600 bg-blue-50 hover:bg-blue-100';
+
                 return `<div class="bg-white border rounded-lg p-3 relative ${isDone ? 'opacity-50 bg-gray-50' : 'shadow-sm'}">
                     <div class="flex justify-between items-start">
                         <div class="flex-1 pr-14">
@@ -725,6 +1015,7 @@
                             </div>
                             <div class="text-xs text-gray-500 mb-2 pl-6">
                                 <p class="line-clamp-2">📍 ${s.address}</p>
+                                ${isMapError ? '<p class="text-[10px] text-red-500 font-bold mt-1">⚠️ Koordinat Error (Cek Manual)</p>' : ''}
                                 <div class="flex items-center gap-2 mt-1">
                                     <span>📞 ${s.phone}</span>
                                     <a href="${waLink}" target="_blank" class="text-green-600 bg-green-50 px-1 rounded hover:bg-green-100 font-bold border border-green-200">Chat</a>
@@ -735,13 +1026,13 @@
                                     ${itemsHtml}
                                     <div class="text-[10px] text-gray-500 mt-1">(Otot: Rp ${s.customLoadFee.toLocaleString('id-ID')})</div>
                                 </div>
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 font-bold text-xs bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 mt-1"><i data-lucide="navigation" class="w-3 h-3"></i> Maps</a>
+                                <a href="${mapLink}" target="_blank" class="inline-flex items-center gap-1 font-bold text-xs px-2 py-1 rounded mt-1 ${mapStyle}"><i data-lucide="navigation" class="w-3 h-3"></i> Maps</a>
                             </div>
                         </div>
                         ${isAccepted && !isDone ? `
-                        <div class="absolute right-3 top-3 flex flex-col gap-2 items-end">
-                            <button onclick="reportViaWA(${idx})" class="bg-green-600 text-white p-2 rounded-lg shadow-sm flex items-center gap-1 text-xs font-bold hover:bg-green-700"><i data-lucide="message-circle" class="w-4 h-4"></i> Lapor</button>
-                            <button onclick="markStopDone(${idx})" class="bg-gray-100 border text-gray-400 p-2 rounded-lg text-xs font-bold hover:bg-gray-200" title="Selesai"><i data-lucide="check" class="w-4 h-4"></i></button>
+                        <div class="absolute right-3 top-3 flex flex-col gap-1 items-end">
+                            <button onclick="markStopDone(${idx})" class="bg-green-600 text-white px-3 py-2 rounded-lg shadow-sm flex items-center gap-1 text-xs font-bold hover:bg-green-700" title="Tandai Selesai (Tanpa WA)"><i data-lucide="check" class="w-4 h-4"></i> Selesai</button>
+                            <button onclick="reportViaWA(${idx})" class="bg-white border border-green-600 text-green-600 px-2 py-1 rounded-lg shadow-sm flex items-center gap-1 text-[10px] font-bold hover:bg-green-50" title="Lapor via WA (Opsional)">WA</button>
                         </div>` : (isDone ? '<i data-lucide="check-circle-2" class="w-6 h-6 text-green-500 absolute right-3 top-3"></i>' : '')}
                     </div>
                 </div>`;
@@ -816,8 +1107,12 @@
             if(st === 'ACCEPTED' && !activeMission.startTime) {
                 activeMission.startTime = timeStr;
                 activeMission.startTimeTs = now.getTime(); // Store TS
-                const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Bismillah, saya jalan ya Bu! 🚛💨\n🕒 ${activeMission.startTime}`)}`;
-                window.open(url, '_blank');
+                if(confirm("Buka WA untuk lapor 'Mulai Jalan' ke Admin?")) {
+                    const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Bismillah, saya jalan ya Bu! 🚛💨\n🕒 ${activeMission.startTime}\n\n*Saya juga sudah share Live Location.*`)}`;
+                    window.open(url, '_blank');
+                } else {
+                    showToast("Status: MULAI JALAN (Tersimpan)");
+                }
             }
             
             if(st === 'COMPLETED' && !activeMission.endTime) {
@@ -831,10 +1126,12 @@
             renderDriverView();
         }
         function markStopDone(idx) {
-            if(!confirm('Sudah lapor? Tandai selesai?')) return;
+            // New "Silent" mode
+            if(!confirm('Tandai selesai? (Tanpa buka WA)')) return;
             activeMission.stops[idx].status = 'DONE';
             activeMission.stops[idx].finishTime = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
             localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
+            showToast("✅ Tugas Selesai Disimpan");
             renderDriverView();
         }
         function reportViaWA(idx) {
