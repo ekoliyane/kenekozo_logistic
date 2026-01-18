@@ -458,8 +458,17 @@
                 const totalKM = Math.ceil((data.routes[0].distance / 1000) * 1.05);
                 
                 let payLoad = 0;
-                sortedStops.forEach(s => payLoad += (s.customLoadFee || 10000));
+                sortedStops.forEach(s => {
+                    if (s.customLoadFee) {
+                        payLoad += s.customLoadFee;
+                    } else {
+                        payLoad += PRICES.load[s.size];
+                    }
+                });
                 
+                const payDrive = totalKM * PRICES.perKM;
+                const payMeal = PRICES.meal;
+
                 const missionObj = {
                     id: 'M-' + Date.now(),
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
@@ -467,7 +476,7 @@
                     totalDistance: totalKM,
                     stops: sortedStops,
                     startTime: null, 
-                    payment: { drive: totalKM * PRICES.perKM, load: payLoad, meal: PRICES.meal, total: (totalKM * PRICES.perKM) + payLoad + PRICES.meal }
+                    payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
 
                 // GENERATE LINK (LZString Compressed)
@@ -590,6 +599,20 @@
                 
                 const itemsHtml = s.items.map(i => `<div class="font-bold text-indigo-900">• ${i.name}</div>`).join('');
                 
+                // --- NEW WA LOGIC ---
+                const rawPhone = s.phone.replace(/[^0-9]/g, '');
+                let formattedPhone = rawPhone;
+                if(rawPhone.startsWith('08')) formattedPhone = '62' + rawPhone.substring(1);
+                else if(rawPhone.startsWith('8')) formattedPhone = '62' + rawPhone;
+
+                const taskVerb = s.task === 'DELIVERY' ? 'mengantar' : 'menjemput';
+                const taskType = s.task === 'DELIVERY' ? 'PENGANTARAN' : 'PENJEMPUTAN';
+                const unitListStr = s.items.map(i => i.name).join(', ');
+
+                const waMessage = `Halo kak ${s.name}, saya Panggih dari Kenekozo Freezer ❄️.\n\nMau info untuk *${taskType}* unit:\n*${unitListStr}*\nke alamat kakak.\n\nApakah ada orang di lokasi? Terima kasih 🙏`;
+                const waLink = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(waMessage)}`;
+                // --------------------
+
                 return `
                 <div class="bg-white border rounded-lg p-3 relative ${isDone ? 'opacity-50 bg-gray-50' : 'shadow-sm'}">
                     <div class="flex justify-between items-start">
@@ -605,7 +628,7 @@
                                 <p class="line-clamp-2">📍 ${s.address}</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span>📞 ${s.phone}</span>
-                                    <a href="https://wa.me/${s.phone.replace(/[^0-9]/g, '')}" target="_blank" class="text-green-600 bg-green-50 px-1 rounded hover:bg-green-100">Chat</a>
+                                    <a href="${waLink}" target="_blank" class="text-green-600 bg-green-50 px-1 rounded hover:bg-green-100 font-bold border border-green-200">Chat Customer</a>
                                 </div>
                             </div>
 
