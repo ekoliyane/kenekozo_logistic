@@ -189,17 +189,29 @@
 
                     <!-- Finish & Report Area (COMPLETED) -->
                     <div id="finish-form" class="hidden p-4 bg-green-50 text-center border-b border-green-100">
-                        <div class="mb-3 bg-green-50 p-2 rounded border border-green-100">
-                            <p class="text-sm font-bold text-green-800">Misi Selesai! 🎉</p>
-                            <p class="text-[10px] text-green-600 mt-1">Mobil kembali: <span id="finish-time-display" class="font-mono font-bold">-</span></p>
-                            <p class="text-xs font-bold text-indigo-700 mt-1" id="total-duration-display">⏱️ Durasi: -</p>
+                        <div class="mb-3 bg-white p-3 rounded border border-green-200 text-left">
+                            <p class="text-sm font-bold text-green-800 text-center mb-2">Misi Selesai! 🎉</p>
+                            <p class="text-[10px] text-green-600 text-center">Mobil kembali: <span id="finish-time-display" class="font-mono font-bold">-</span></p>
+                            <p class="text-xs font-bold text-indigo-700 mt-1 text-center mb-3" id="total-duration-display">⏱️ Durasi: -</p>
+                            
+                            <!-- DRIVER NOTES INPUT -->
+                            <hr class="border-green-100 mb-2">
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Catatan Keuangan & Operasional:</label>
+                            <textarea id="driver-notes" oninput="saveDriverNotes()" class="w-full p-2 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-green-500 outline-none" rows="3" placeholder="Contoh: Beli bensin 50rb, Tambal ban 20rb, Terima uang cash dari Bu Ani 200rb..."></textarea>
+                            <p class="text-[10px] text-gray-400 mt-1">*Tulis pengeluaran atau uang yang diterima tunai.</p>
                         </div>
-                        <div class="flex gap-2">
-                            <!-- TOMBOL DOWNLOAD PDF -->
-                            <button onclick="downloadPDFReport()" class="flex-1 bg-white border border-red-600 text-red-600 py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2 hover:bg-red-50">
-                                <i data-lucide="file-text" class="w-4 h-4"></i> Unduh PDF
+
+                        <div class="flex gap-2 flex-col">
+                            <button onclick="sendFinishWA()" class="w-full bg-green-500 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-600 flex justify-center items-center gap-2">
+                                <i data-lucide="message-circle" class="w-4 h-4"></i> Lapor via WA
                             </button>
-                            <button onclick="resetAll()" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-green-700">Tutup</button>
+                            <div class="flex gap-2">
+                                <!-- TOMBOL DOWNLOAD PDF -->
+                                <button onclick="downloadPDFReport()" class="flex-1 bg-white border border-red-600 text-red-600 py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2 hover:bg-red-50">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i> Unduh PDF
+                                </button>
+                                <button onclick="resetAll()" class="flex-1 bg-gray-600 text-white py-2 rounded-lg text-sm font-bold shadow hover:bg-gray-700">Tutup</button>
+                            </div>
                         </div>
                     </div>
 
@@ -257,6 +269,8 @@
                     const jsonStr = LZString.decompressFromEncodedURIComponent(missionData);
                     if(jsonStr) {
                         activeMission = JSON.parse(jsonStr);
+                        // Ensure legacy structure has notes field
+                        if(!activeMission.driverNotes) activeMission.driverNotes = '';
                         localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
                         switchRole('driver');
                         window.history.replaceState({}, document.title, window.location.pathname);
@@ -428,6 +442,7 @@
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
                     adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, 
                     startTime: null, endTime: null, startTimeTs: null, endTimeTs: null,
+                    driverNotes: '', // NEW FIELD FOR NOTES
                     payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
                 const jsonString = JSON.stringify(missionObj);
@@ -502,6 +517,8 @@
             } else if (status === 'COMPLETED') {
                 finishForm.classList.remove('hidden');
                 document.getElementById('finish-time-display').innerText = activeMission.endTime || '-';
+                // Pre-fill notes if existing
+                document.getElementById('driver-notes').value = activeMission.driverNotes || '';
                 
                 // Show Duration
                 if (activeMission.startTimeTs && activeMission.endTimeTs) {
@@ -578,7 +595,24 @@
             lucide.createIcons();
         }
 
-        // --- NEW PDF REPORT ---
+        // --- NEW: Save Driver Notes ---
+        function saveDriverNotes() {
+            const note = document.getElementById('driver-notes').value;
+            if(activeMission) {
+                activeMission.driverNotes = note;
+                localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
+            }
+        }
+
+        // --- NEW: Send Finish WA ---
+        function sendFinishWA() {
+            if(!activeMission) return;
+            const note = activeMission.driverNotes ? `\n\n📝 *Catatan Sopir:*\n${activeMission.driverNotes}` : '';
+            const msg = `Alhamdulillah, sudah sampai garasi Bu! 🏁\n🕒 ${activeMission.endTime}${note}\n\nMisi selesai.`;
+            window.open(`https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // --- UPDATED PDF REPORT ---
         function downloadPDFReport() {
             if (!activeMission) return;
             const { jsPDF } = window.jspdf;
@@ -651,8 +685,30 @@
             doc.text(`TOTAL TERIMA:`, 15, finalY + 33);
             doc.text(`Rp ${activeMission.payment.total.toLocaleString('id-ID')}`, 80, finalY + 33, {align: 'right'});
 
+            // --- DRIVER NOTES SECTION IN PDF ---
+            if (activeMission.driverNotes && activeMission.driverNotes.trim() !== "") {
+                finalY += 40; // Move down below payment summary
+                doc.setFillColor(255, 252, 230); // Light Yellow
+                doc.rect(10, finalY, 190, 25, 'F'); // Notes Box
+                doc.setDrawColor(200, 200, 0);
+                doc.rect(10, finalY, 190, 25, 'S'); // Border
+                
+                doc.setTextColor(0, 0, 0);
+                doc.setFont(undefined, 'bold');
+                doc.text("CATATAN TAMBAHAN (KEUANGAN/BENSIN):", 15, finalY + 6);
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(9);
+                
+                // Wrap text manually
+                const splitText = doc.splitTextToSize(activeMission.driverNotes, 180);
+                doc.text(splitText, 15, finalY + 12);
+                
+                finalY += 30; // Adjust for next section
+            } else {
+                finalY += 45;
+            }
+
             // Digital Validation
-            finalY += 45;
             doc.setFillColor(240, 255, 240);
             doc.setDrawColor(0, 128, 0);
             doc.roundedRect(10, finalY, 190, 20, 3, 3, 'FD');
@@ -685,8 +741,7 @@
             if(st === 'COMPLETED' && !activeMission.endTime) {
                 activeMission.endTime = timeStr;
                 activeMission.endTimeTs = now.getTime(); // Store TS
-                const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Alhamdulillah, sudah sampai garasi Bu! 🏁\n🕒 ${activeMission.endTime}\n\nMisi selesai.`)}`;
-                window.open(url, '_blank');
+                // Notice: We don't send WA immediately here, we let them fill notes first then click "Lapor via WA"
             }
 
             activeMission.status = st;
