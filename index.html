@@ -100,22 +100,35 @@
 
             <!-- Result Link -->
             <div id="share-section" class="hidden bg-green-50 p-4 rounded-xl border border-green-200 mt-4">
-                <h3 class="font-bold text-green-800 flex items-center gap-2 mb-2"><i data-lucide="link" class="w-4 h-4"></i> Link Siap!</h3>
+                <h3 class="font-bold text-green-800 flex items-center gap-2 mb-2"><i data-lucide="link" class="w-4 h-4"></i> Link Misi</h3>
+                
+                <!-- NEW: Salary Slip Button -->
+                <button onclick="openSalaryModal()" class="w-full bg-white border border-indigo-300 text-indigo-700 py-2 rounded mb-3 text-sm font-bold hover:bg-indigo-50 flex justify-center items-center gap-2 shadow-sm">
+                    <i data-lucide="banknote" class="w-4 h-4"></i> BUAT STRUK GAJI (Admin)
+                </button>
+
+                <!-- Shorten Button -->
+                <button onclick="tryShortenLink()" class="w-full bg-indigo-100 text-indigo-700 py-2 rounded mb-2 text-xs font-bold hover:bg-indigo-200 flex justify-center items-center gap-1">
+                    <i data-lucide="scissors" class="w-3 h-3"></i> Buat Link Pendek (TinyURL)
+                </button>
+                <p id="shorten-warning" class="hidden text-[10px] text-red-500 mb-2 text-center bg-red-50 p-1 rounded">
+                    ⚠️ Link komputer (file://) tidak bisa dipendekkan. Gunakan "Copy Kode Manual" di bawah.
+                </p>
+
                 <div class="flex gap-2 mb-2">
                     <input type="text" id="share-link-input" readonly class="w-full p-2 text-xs border rounded bg-white text-gray-500">
                     <button onclick="copyShareLink()" class="bg-green-600 text-white px-3 py-2 rounded font-bold text-xs whitespace-nowrap hover:bg-green-700">Salin</button>
                 </div>
+                
                 <a id="wa-share-btn" href="#" target="_blank" class="block text-center bg-white border border-green-500 text-green-600 py-2 rounded-lg text-xs font-bold hover:bg-green-50">Kirim ke WA Panggih ➡️</a>
                 
                 <!-- Backup Manual Code -->
-                <details class="mt-3">
-                    <summary class="text-[10px] text-gray-400 cursor-pointer">Link error/kepanjangan? Klik ini.</summary>
-                    <div class="mt-2 bg-white p-2 rounded border">
-                        <p class="text-[10px] text-gray-500 mb-1">Copy kode ini dan minta Panggih paste di menu 'Load Manual' di HP-nya:</p>
-                        <textarea id="manual-code-area" readonly class="w-full h-16 text-[10px] bg-gray-100 p-1 font-mono"></textarea>
-                        <button onclick="copyManualCode()" class="w-full bg-gray-200 text-xs py-1 rounded mt-1 font-bold">Copy Kode Manual</button>
-                    </div>
-                </details>
+                <div class="mt-3 bg-white p-3 rounded border border-gray-200 shadow-sm">
+                    <p class="text-xs font-bold text-gray-700 mb-1 flex items-center gap-1"><i data-lucide="code" class="w-3 h-3"></i> KODE MANUAL (Hemat Karakter)</p>
+                    <p class="text-[10px] text-gray-500 mb-1">Jika link error, copy kode ini & minta driver paste di menu 'Load Manual':</p>
+                    <textarea id="manual-code-area" readonly class="w-full h-16 text-[10px] bg-gray-100 p-1 font-mono rounded border-gray-300"></textarea>
+                    <button onclick="copyManualCode()" class="w-full bg-gray-200 text-xs py-2 rounded mt-1 font-bold hover:bg-gray-300">Copy Kode</button>
+                </div>
             </div>
         </div>
 
@@ -126,7 +139,7 @@
                 <i data-lucide="truck" class="w-16 h-16 mx-auto mb-2 text-gray-200"></i>
                 <p>Belum ada misi.</p>
                 <div class="mt-4 px-8">
-                    <p class="text-xs text-gray-400 mb-2">Atau paste kode manual dari Bu Lya:</p>
+                    <p class="text-xs text-gray-400 mb-2">Paste kode manual dari Bu Lya:</p>
                     <textarea id="driver-paste-area" class="w-full border rounded p-2 text-xs h-16" placeholder="Paste kode di sini..."></textarea>
                     <button onclick="loadManualCode()" class="w-full bg-indigo-600 text-white py-2 rounded text-xs font-bold mt-1">Load Data</button>
                 </div>
@@ -248,6 +261,81 @@
             </div>
         </div>
 
+        <!-- NEW: MODAL EDIT GAJI (SALARY SLIP) -->
+        <div id="salary-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[60] hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto flex flex-col">
+                <div class="bg-indigo-800 p-4 sticky top-0 flex justify-between items-center text-white">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="file-edit" class="w-5 h-5"></i>
+                        <h3 class="font-bold text-sm">Editor Struk Gaji</h3>
+                    </div>
+                    <button onclick="closeSalaryModal()" class="hover:text-red-300"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                
+                <div class="p-5 flex-1 overflow-y-auto">
+                    <p class="text-[10px] text-gray-500 mb-3 bg-indigo-50 p-2 rounded border border-indigo-100">
+                        💡 Data ini hanya untuk cetak struk PDF di sini. Tidak mengubah link driver.
+                    </p>
+
+                    <div class="space-y-3">
+                        <!-- Uang Jalan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Uang Jalan (Jarak)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-xs text-gray-500">Rp</span>
+                                <input type="number" id="slip-drive" class="w-full pl-8 p-2 border rounded text-sm bg-gray-50 focus:bg-white focus:ring-1 ring-indigo-500 outline-none" oninput="calculateSalaryTotal()">
+                            </div>
+                        </div>
+
+                        <!-- Uang Otot -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Ongkos Otot (Muatan)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-xs text-gray-500">Rp</span>
+                                <input type="number" id="slip-load" class="w-full pl-8 p-2 border rounded text-sm bg-gray-50 focus:bg-white focus:ring-1 ring-indigo-500 outline-none" oninput="calculateSalaryTotal()">
+                            </div>
+                        </div>
+
+                        <!-- Uang Makan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Uang Makan</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-xs text-gray-500">Rp</span>
+                                <input type="number" id="slip-meal" class="w-full pl-8 p-2 border rounded text-sm bg-gray-50 focus:bg-white focus:ring-1 ring-indigo-500 outline-none" oninput="calculateSalaryTotal()">
+                            </div>
+                        </div>
+
+                        <!-- Penyesuaian -->
+                        <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                            <label class="block text-xs font-bold text-yellow-800 mb-1">Penyesuaian (+/-)</label>
+                            <input type="text" id="slip-adj-desc" placeholder="Keterangan (mis: Bonus/Kasbon)" class="w-full p-2 mb-2 border rounded text-xs bg-white outline-none">
+                            <div class="relative">
+                                <span class="absolute left-3 top-2 text-xs text-gray-500">Rp</span>
+                                <input type="number" id="slip-adj-val" placeholder="0" class="w-full pl-8 p-2 border rounded text-sm bg-white focus:ring-1 ring-yellow-500 outline-none" oninput="calculateSalaryTotal()">
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1">Gunakan tanda minus (-) untuk potongan.</p>
+                        </div>
+
+                        <!-- Catatan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Catatan Admin</label>
+                            <textarea id="slip-note" rows="2" class="w-full p-2 border rounded text-xs bg-gray-50 focus:bg-white outline-none" placeholder="Pesan untuk sopir..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-gray-100 border-t sticky bottom-0">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-sm font-bold text-gray-600">Total Terima:</span>
+                        <span id="slip-total-display" class="text-xl font-bold text-indigo-700">Rp 0</span>
+                    </div>
+                    <button onclick="printSalarySlip()" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white py-3 rounded-lg font-bold shadow-lg flex justify-center items-center gap-2">
+                        <i data-lucide="printer" class="w-5 h-5"></i> CETAK PDF STRUK
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -268,8 +356,11 @@
                 try {
                     const jsonStr = LZString.decompressFromEncodedURIComponent(missionData);
                     if(jsonStr) {
-                        activeMission = JSON.parse(jsonStr);
-                        // Ensure legacy structure has notes field
+                        const parsed = JSON.parse(jsonStr);
+                        // Check if minified (version 2) or legacy
+                        activeMission = parsed.v === 2 ? expandMission(parsed) : parsed;
+                        
+                        // Ensure structure
                         if(!activeMission.driverNotes) activeMission.driverNotes = '';
                         localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
                         switchRole('driver');
@@ -410,6 +501,38 @@
                 `).join('');
             } else { container.classList.add('hidden'); }
         }
+        
+        // --- NEW: Minification Logic to reduce URL size ---
+        function minifyMission(m) {
+            return {
+                v: 2, // version
+                id: m.id, dt: m.date, ap: m.adminPhone, km: m.totalDistance,
+                s: m.stops.map(s => ({
+                    n: s.name, t: s.task==='DELIVERY'?'D':'P', hp: s.phone,
+                    al: s.address, la: s.lat, ln: s.lng,
+                    st: s.status, sz: s.size, cf: s.customLoadFee,
+                    it: s.items.map(i => ({n: i.name, f: i.fee}))
+                })),
+                py: { dr: m.payment.drive, ld: m.payment.load, ml: m.payment.meal, tt: m.payment.total },
+                nt: m.driverNotes || ''
+            };
+        }
+
+        function expandMission(m) {
+            return {
+                id: m.id, date: m.dt, adminPhone: m.ap, totalDistance: m.km,
+                stops: m.s.map(s => ({
+                    name: s.n, task: s.t==='D'?'DELIVERY':'PICKUP', phone: s.hp,
+                    address: s.al, lat: s.la, lng: s.ln,
+                    status: s.st, size: s.sz, customLoadFee: s.cf,
+                    items: s.it.map(i => ({name: i.n, fee: i.f}))
+                })),
+                payment: { drive: m.py.dr, load: m.py.ld, meal: m.py.ml, total: m.py.tt },
+                driverNotes: m.nt || '',
+                // Preserve optional properties if expanding back from storage
+                startTime: m.t1, endTime: m.t2, startTimeTs: m.ts1, endTimeTs: m.ts2
+            };
+        }
 
         async function generateMission() {
             if (stops.length === 0) return;
@@ -442,22 +565,53 @@
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
                     adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, 
                     startTime: null, endTime: null, startTimeTs: null, endTimeTs: null,
-                    driverNotes: '', // NEW FIELD FOR NOTES
+                    driverNotes: '',
                     payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
-                const jsonString = JSON.stringify(missionObj);
+                
+                // USE MINIFIED OBJECT FOR LINK GENERATION
+                const minifiedObj = minifyMission(missionObj);
+                const jsonString = JSON.stringify(minifiedObj);
                 const compressed = LZString.compressToEncodedURIComponent(jsonString);
+                
                 const shareUrl = `${window.location.origin}${window.location.pathname}?d=${compressed}`;
                 document.getElementById('share-link-input').value = shareUrl;
                 document.getElementById('manual-code-area').value = compressed;
-                const waText = `Pak Panggih, link misi hari ini:\n${shareUrl}`;
+                const waText = `*MISI KENEKOZO BARU* 🚚\nTanggal: ${missionObj.date}\nTotal Stop: ${missionObj.stops.length}\nJarak: ${missionObj.totalDistance} KM\n\n*Kode Load Manual:*\n${compressed}`;
                 document.getElementById('wa-share-btn').href = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+                
                 document.getElementById('share-section').classList.remove('hidden');
+                
+                // Save full object to storage for local testing
                 localStorage.setItem('kenekozo_mission', JSON.stringify(missionObj));
                 activeMission = missionObj;
                 stops = []; adminMarkers.forEach(m => map.removeLayer(m)); adminMarkers = [];
                 renderDraftList(); document.getElementById('bulk-input').value = '';
-            } catch (e) { alert("Gagal hitung rute/koneksi."); }
+            } catch (e) { console.error(e); alert("Gagal hitung rute/koneksi."); }
+            btn.innerHTML = oriText; btn.disabled = false;
+        }
+
+        async function tryShortenLink() {
+            if (window.location.protocol === 'file:') {
+                document.getElementById('shorten-warning').classList.remove('hidden');
+                return;
+            }
+            const longUrl = document.getElementById('share-link-input').value;
+            const btn = document.querySelector('#share-section button');
+            const oriText = btn.innerHTML;
+            btn.innerText = '⏳ Memendekkan...'; btn.disabled = true;
+            try {
+                const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if(res.ok) {
+                    const shortUrl = await res.text();
+                    document.getElementById('share-link-input').value = shortUrl;
+                    const baseMsg = document.getElementById('wa-share-btn').href;
+                    // Try to replace the long code in WA msg if possible, but easier to just append
+                    const waText = `*MISI KENEKOZO BARU* 🚚\nLink: ${shortUrl}`;
+                    document.getElementById('wa-share-btn').href = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+                    alert("Link berhasil dipendekkan!");
+                } else { throw new Error('API Error'); }
+            } catch(e) { alert("Gagal memendekkan link. Pastikan online."); }
             btn.innerHTML = oriText; btn.disabled = false;
         }
 
@@ -612,29 +766,24 @@
             window.open(`https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        // --- UPDATED PDF REPORT ---
+        // --- UPDATED PDF REPORT (For Driver/General) ---
         function downloadPDFReport() {
             if (!activeMission) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-
-            // Header
+            // ... (Kode PDF Report Driver tetap sama)
             doc.setFillColor(79, 70, 229); // Indigo
             doc.rect(0, 0, 210, 20, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
             doc.setFont(undefined, 'bold');
             doc.text("KENEKOZO LOGISTICS REPORT", 10, 13);
-
-            // Mission Details
             doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
             doc.setFont(undefined, 'normal');
             doc.text(`Tanggal: ${activeMission.date}`, 10, 30);
-            doc.text(`Mulai: ${activeMission.startTime || '-'} (Siap berangkat)`, 10, 35);
-            doc.text(`Selesai: ${activeMission.endTime || '-'} (Tiba di garasi)`, 10, 40);
-            
-            // Calculate Duration for PDF
+            doc.text(`Mulai: ${activeMission.startTime || '-'}`, 10, 35);
+            doc.text(`Selesai: ${activeMission.endTime || '-'}`, 10, 40);
             let durationStr = '-';
             if (activeMission.startTimeTs && activeMission.endTimeTs) {
                 const diff = activeMission.endTimeTs - activeMission.startTimeTs;
@@ -642,86 +791,19 @@
                 const mins = Math.floor((diff % 3600000) / 60000);
                 durationStr = `${hrs} Jam ${mins} Menit`;
             }
-            doc.text(`Total Durasi: ${durationStr}`, 10, 45);
-            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 50);
-            
-            // Table
+            doc.text(`Durasi: ${durationStr}`, 10, 45);
+            doc.text(`Jarak: ${activeMission.totalDistance} KM`, 10, 50);
             const tableBody = activeMission.stops.map((s, i) => [
-                i+1,
-                s.name,
-                s.task === 'DELIVERY' ? 'Kirim' : 'Ambil',
-                s.items.map(x=>x.name).join('\n'), // Multi-line for items
-                `Rp ${s.customLoadFee.toLocaleString('id-ID')}`,
-                s.finishTime || 'Selesai'
+                i+1, s.name, s.task==='DELIVERY'?'Kirim':'Ambil', s.items.map(x=>x.name).join('\n'), `Rp ${s.customLoadFee.toLocaleString('id-ID')}`, s.finishTime||'Selesai'
             ]);
-
-            doc.autoTable({
-                startY: 55,
-                head: [['No', 'Customer', 'Tipe', 'Unit', 'Ongkos', 'Jam Selesai']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] },
-                styles: { fontSize: 8, cellPadding: 2 }
-            });
-
-            // Financial Summary
+            doc.autoTable({ startY: 55, head: [['No', 'Customer', 'Tipe', 'Unit', 'Ongkos', 'Jam']], body: tableBody, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, styles: { fontSize: 8, cellPadding: 2 } });
             let finalY = doc.lastAutoTable.finalY + 10;
-            
-            doc.setFillColor(245, 245, 245);
-            doc.rect(10, finalY, 100, 35, 'F');
-            doc.setFont(undefined, 'bold');
-            doc.text("RINCIAN GAJI SOPIR", 15, finalY + 7);
-            
-            doc.setFont(undefined, 'normal');
-            doc.text(`Uang Jalan (${activeMission.totalDistance}km):`, 15, finalY + 15);
-            doc.text(`Rp ${activeMission.payment.drive.toLocaleString('id-ID')}`, 80, finalY + 15, {align: 'right'});
-            doc.text(`Total Ongkos Otot:`, 15, finalY + 20);
-            doc.text(`Rp ${activeMission.payment.load.toLocaleString('id-ID')}`, 80, finalY + 20, {align: 'right'});
-            doc.text(`Uang Makan:`, 15, finalY + 25);
-            doc.text(`Rp ${activeMission.payment.meal.toLocaleString('id-ID')}`, 80, finalY + 25, {align: 'right'});
-            
-            doc.setFont(undefined, 'bold');
-            doc.line(15, finalY + 28, 80, finalY + 28);
-            doc.text(`TOTAL TERIMA:`, 15, finalY + 33);
-            doc.text(`Rp ${activeMission.payment.total.toLocaleString('id-ID')}`, 80, finalY + 33, {align: 'right'});
-
-            // --- DRIVER NOTES SECTION IN PDF ---
-            if (activeMission.driverNotes && activeMission.driverNotes.trim() !== "") {
-                finalY += 40; // Move down below payment summary
-                doc.setFillColor(255, 252, 230); // Light Yellow
-                doc.rect(10, finalY, 190, 25, 'F'); // Notes Box
-                doc.setDrawColor(200, 200, 0);
-                doc.rect(10, finalY, 190, 25, 'S'); // Border
-                
-                doc.setTextColor(0, 0, 0);
-                doc.setFont(undefined, 'bold');
-                doc.text("CATATAN TAMBAHAN (KEUANGAN/BENSIN):", 15, finalY + 6);
-                doc.setFont(undefined, 'normal');
-                doc.setFontSize(9);
-                
-                // Wrap text manually
-                const splitText = doc.splitTextToSize(activeMission.driverNotes, 180);
-                doc.text(splitText, 15, finalY + 12);
-                
-                finalY += 30; // Adjust for next section
-            } else {
-                finalY += 45;
+            doc.text(`Total Terima: Rp ${activeMission.payment.total.toLocaleString('id-ID')}`, 15, finalY);
+            if(activeMission.driverNotes) {
+                finalY += 10;
+                doc.text(`Catatan Sopir: ${activeMission.driverNotes}`, 15, finalY);
             }
-
-            // Digital Validation
-            doc.setFillColor(240, 255, 240);
-            doc.setDrawColor(0, 128, 0);
-            doc.roundedRect(10, finalY, 190, 20, 3, 3, 'FD');
-            doc.setTextColor(0, 100, 0);
-            doc.setFontSize(9);
-            doc.setFont(undefined, 'bold');
-            doc.text("VALIDASI DIGITAL SISTEM", 15, finalY + 7);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(60, 60, 60);
-            doc.text("Laporan ini dibuat otomatis oleh sistem Kenekozo Logistics.", 15, finalY + 13);
-            doc.text("Pembayaran gaji dilakukan via transfer online. Dokumen ini sah tanpa tanda tangan basah.", 15, finalY + 17);
-
-            doc.save(`Laporan_Kenekozo_${Date.now()}.pdf`);
+            doc.save(`Laporan_Driver_${Date.now()}.pdf`);
         }
 
         function updateMissionStatus(st) {
@@ -785,7 +867,9 @@
             try {
                 const jsonStr = LZString.decompressFromEncodedURIComponent(code);
                 if(jsonStr) {
-                    activeMission = JSON.parse(jsonStr);
+                    const parsed = JSON.parse(jsonStr);
+                    activeMission = parsed.v === 2 ? expandMission(parsed) : parsed;
+                    if(!activeMission.driverNotes) activeMission.driverNotes = '';
                     localStorage.setItem('kenekozo_mission', JSON.stringify(activeMission));
                     renderDriverView();
                 } else { alert("Kode salah!"); }
@@ -795,8 +879,185 @@
         function toggleTariffInfo() { document.getElementById('tariff-modal').classList.toggle('hidden'); }
         function loadMissionFromStorage() {
             const data = localStorage.getItem('kenekozo_mission');
-            if(data) { activeMission = JSON.parse(data); renderDriverView(); }
+            if(data) { 
+                const parsed = JSON.parse(data);
+                activeMission = parsed.v === 2 ? expandMission(parsed) : parsed;
+                renderDriverView(); 
+            }
         }
+
+        // --- NEW: Salary Slip Functions ---
+        function openSalaryModal() {
+            if(!activeMission) return alert("Belum ada data misi!");
+            document.getElementById('salary-modal').classList.remove('hidden');
+            
+            // Fill initial data
+            document.getElementById('slip-drive').value = activeMission.payment.drive;
+            document.getElementById('slip-load').value = activeMission.payment.load;
+            document.getElementById('slip-meal').value = activeMission.payment.meal;
+            document.getElementById('slip-adj-desc').value = '';
+            document.getElementById('slip-adj-val').value = '';
+            document.getElementById('slip-note').value = '';
+            
+            calculateSalaryTotal();
+        }
+
+        function closeSalaryModal() {
+            document.getElementById('salary-modal').classList.add('hidden');
+        }
+
+        function calculateSalaryTotal() {
+            const d = parseInt(document.getElementById('slip-drive').value) || 0;
+            const l = parseInt(document.getElementById('slip-load').value) || 0;
+            const m = parseInt(document.getElementById('slip-meal').value) || 0;
+            const a = parseInt(document.getElementById('slip-adj-val').value) || 0;
+            
+            const total = d + l + m + a;
+            document.getElementById('slip-total-display').innerText = 'Rp ' + total.toLocaleString('id-ID');
+            return total;
+        }
+
+        function printSalarySlip() {
+            const { jsPDF } = window.jspdf;
+            // Gunakan format roll 80mm, tinggi menyesuaikan konten (estimasi awal 250mm, nanti auto cut kalo printer support, tapi di PDF static)
+            const doc = new jsPDF({
+                orientation: 'p',
+                unit: 'mm',
+                format: [80, 250] 
+            });
+
+            const d = parseInt(document.getElementById('slip-drive').value) || 0;
+            const l = parseInt(document.getElementById('slip-load').value) || 0;
+            const m = parseInt(document.getElementById('slip-meal').value) || 0;
+            const aVal = parseInt(document.getElementById('slip-adj-val').value) || 0;
+            const aDesc = document.getElementById('slip-adj-desc').value || 'Penyesuaian';
+            const note = document.getElementById('slip-note').value;
+            const total = d + l + m + aVal;
+
+            // --- HEADER ---
+            doc.setFillColor(55, 48, 163); // Indigo 800
+            doc.rect(0, 0, 80, 25, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text("KENEKOZO LOGISTICS", 40, 10, {align:'center'});
+            
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.text("Slip Gaji & Operasional Driver", 40, 15, {align:'center'});
+            doc.text(activeMission.date, 40, 20, {align:'center'});
+
+            doc.setTextColor(0, 0, 0);
+            let y = 32;
+
+            // --- RINCIAN MISI ---
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text("RINGKASAN MISI:", 5, y);
+            y += 5;
+            
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Total Jarak Tempuh: ${activeMission.totalDistance} KM`, 5, y);
+            y += 5;
+
+            // Tabel Stops
+            const stopsBody = activeMission.stops.map(s => [
+                s.name.substring(0, 15), // Truncate name if too long
+                s.items.map(i => i.name).join(', ') // Units
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Customer', 'Unit']],
+                body: stopsBody,
+                theme: 'plain',
+                styles: { fontSize: 7, cellPadding: 1 },
+                headStyles: { fillColor: [240, 240, 240], textColor: [0,0,0], fontStyle: 'bold' },
+                columnStyles: { 0: { cellWidth: 30 }, 1: { cellWidth: 40 } },
+                margin: { left: 5, right: 5 }
+            });
+
+            y = doc.lastAutoTable.finalY + 8;
+
+            // --- RINCIAN GAJI ---
+            // Draw Box
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.1);
+            doc.line(5, y, 75, y); // Separator
+            y += 5;
+
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'bold');
+            doc.text("RINCIAN PEMBAYARAN:", 5, y);
+            y += 6;
+
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+
+            // Helper for Row
+            const addRow = (label, val, isBold = false) => {
+                doc.setFont(undefined, isBold ? 'bold' : 'normal');
+                doc.text(label, 5, y);
+                doc.text(val, 75, y, {align:'right'});
+                y += 5;
+            };
+
+            addRow("Uang Jalan (BBM+Jasa)", `Rp ${d.toLocaleString('id-ID')}`);
+            addRow("Ongkos Otot (Muatan)", `Rp ${l.toLocaleString('id-ID')}`);
+            addRow("Uang Makan", `Rp ${m.toLocaleString('id-ID')}`);
+            
+            if(aVal !== 0) {
+                 doc.setTextColor(aVal < 0 ? 200 : 0, 0, 0); // Red if minus
+                 addRow(aDesc, `Rp ${aVal.toLocaleString('id-ID')}`);
+                 doc.setTextColor(0,0,0);
+            }
+
+            y += 2;
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.3);
+            doc.line(5, y, 75, y);
+            y += 6;
+
+            // --- TOTAL ---
+            doc.setFillColor(236, 252, 249); // Light Green bg
+            doc.rect(5, y-5, 70, 10, 'F');
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(0, 100, 0);
+            doc.text("TOTAL TERIMA", 7, y+2);
+            doc.text(`Rp ${total.toLocaleString('id-ID')}`, 73, y+2, {align:'right'});
+            
+            y += 10;
+
+            // --- CATATAN ---
+            if(note) {
+                y += 5;
+                doc.setTextColor(0,0,0);
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                doc.text("Catatan Admin:", 5, y);
+                y += 4;
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(7);
+                const splitNote = doc.splitTextToSize(note, 70);
+                doc.text(splitNote, 5, y);
+                y += (splitNote.length * 3) + 5;
+            } else {
+                y += 10;
+            }
+
+            // --- FOOTER (NO SIGNATURE) ---
+            doc.setTextColor(150, 150, 150);
+            doc.setFontSize(6);
+            doc.text("Dokumen ini diterbitkan secara digital oleh sistem.", 40, y, {align:'center'});
+            doc.text("Valid dan sah tanpa tanda tangan basah.", 40, y+3, {align:'center'});
+            doc.text("Kenekozo Logistics System © 2024", 40, y+6, {align:'center'});
+
+            doc.save(`Slip_Gaji_${activeMission.date.replace(/\s/g, '_')}.pdf`);
+        }
+
     </script>
 </body>
 </html>
