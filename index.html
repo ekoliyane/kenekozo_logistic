@@ -189,9 +189,10 @@
 
                     <!-- Finish & Report Area (COMPLETED) -->
                     <div id="finish-form" class="hidden p-4 bg-green-50 text-center border-b border-green-100">
-                        <div class="mb-3">
+                        <div class="mb-3 bg-green-50 p-2 rounded border border-green-100">
                             <p class="text-sm font-bold text-green-800">Misi Selesai! 🎉</p>
-                            <p class="text-[10px] text-green-600">Mobil kembali ke garasi: <span id="finish-time-display" class="font-mono font-bold">-</span></p>
+                            <p class="text-[10px] text-green-600 mt-1">Mobil kembali: <span id="finish-time-display" class="font-mono font-bold">-</span></p>
+                            <p class="text-xs font-bold text-indigo-700 mt-1" id="total-duration-display">⏱️ Durasi: -</p>
                         </div>
                         <div class="flex gap-2">
                             <!-- TOMBOL DOWNLOAD PDF -->
@@ -425,7 +426,8 @@
                 const missionObj = {
                     id: 'M-' + Date.now(),
                     date: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-                    adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, startTime: null, endTime: null,
+                    adminPhone: adminPhone, totalDistance: totalKM, stops: sortedStops, 
+                    startTime: null, endTime: null, startTimeTs: null, endTimeTs: null,
                     payment: { drive: payDrive, load: payLoad, meal: payMeal, total: payDrive + payLoad + payMeal }
                 };
                 const jsonString = JSON.stringify(missionObj);
@@ -486,7 +488,6 @@
             
             badge.innerText = status === 'ACCEPTED' ? 'SEDANG JALAN' : status;
             
-            // Logic Display
             actionBtns.classList.add('hidden');
             garageBtn.classList.add('hidden');
             finishForm.classList.add('hidden');
@@ -494,7 +495,6 @@
             if (status === 'PENDING') {
                 actionBtns.classList.remove('hidden');
             } else if (status === 'ACCEPTED') {
-                // Cek apakah semua stop sudah DONE?
                 const allDone = activeMission.stops.every(s => s.status === 'DONE');
                 if(allDone) {
                     garageBtn.classList.remove('hidden');
@@ -502,9 +502,16 @@
             } else if (status === 'COMPLETED') {
                 finishForm.classList.remove('hidden');
                 document.getElementById('finish-time-display').innerText = activeMission.endTime || '-';
+                
+                // Show Duration
+                if (activeMission.startTimeTs && activeMission.endTimeTs) {
+                    const diff = activeMission.endTimeTs - activeMission.startTimeTs;
+                    const hrs = Math.floor(diff / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    document.getElementById('total-duration-display').innerText = `⏱️ Durasi: ${hrs} Jam ${mins} Menit`;
+                }
             }
 
-            // Draw Route
             setTimeout(async () => {
                 initDriverMap(); driverMap.invalidateSize();
                 driverMap.eachLayer((l) => { if (l instanceof L.Marker || l instanceof L.Polyline) driverMap.removeLayer(l); });
@@ -592,7 +599,17 @@
             doc.text(`Tanggal: ${activeMission.date}`, 10, 30);
             doc.text(`Mulai: ${activeMission.startTime || '-'} (Siap berangkat)`, 10, 35);
             doc.text(`Selesai: ${activeMission.endTime || '-'} (Tiba di garasi)`, 10, 40);
-            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 45);
+            
+            // Calculate Duration for PDF
+            let durationStr = '-';
+            if (activeMission.startTimeTs && activeMission.endTimeTs) {
+                const diff = activeMission.endTimeTs - activeMission.startTimeTs;
+                const hrs = Math.floor(diff / 3600000);
+                const mins = Math.floor((diff % 3600000) / 60000);
+                durationStr = `${hrs} Jam ${mins} Menit`;
+            }
+            doc.text(`Total Durasi: ${durationStr}`, 10, 45);
+            doc.text(`Total Jarak: ${activeMission.totalDistance} KM`, 10, 50);
             
             // Table
             const tableBody = activeMission.stops.map((s, i) => [
@@ -605,7 +622,7 @@
             ]);
 
             doc.autoTable({
-                startY: 50,
+                startY: 55,
                 head: [['No', 'Customer', 'Tipe', 'Unit', 'Ongkos', 'Jam Selesai']],
                 body: tableBody,
                 theme: 'grid',
@@ -616,7 +633,6 @@
             // Financial Summary
             let finalY = doc.lastAutoTable.finalY + 10;
             
-            // Box for Total
             doc.setFillColor(245, 245, 245);
             doc.rect(10, finalY, 100, 35, 'F');
             doc.setFont(undefined, 'bold');
@@ -625,10 +641,8 @@
             doc.setFont(undefined, 'normal');
             doc.text(`Uang Jalan (${activeMission.totalDistance}km):`, 15, finalY + 15);
             doc.text(`Rp ${activeMission.payment.drive.toLocaleString('id-ID')}`, 80, finalY + 15, {align: 'right'});
-            
             doc.text(`Total Ongkos Otot:`, 15, finalY + 20);
             doc.text(`Rp ${activeMission.payment.load.toLocaleString('id-ID')}`, 80, finalY + 20, {align: 'right'});
-            
             doc.text(`Uang Makan:`, 15, finalY + 25);
             doc.text(`Rp ${activeMission.payment.meal.toLocaleString('id-ID')}`, 80, finalY + 25, {align: 'right'});
             
@@ -642,12 +656,10 @@
             doc.setFillColor(240, 255, 240);
             doc.setDrawColor(0, 128, 0);
             doc.roundedRect(10, finalY, 190, 20, 3, 3, 'FD');
-            
             doc.setTextColor(0, 100, 0);
             doc.setFontSize(9);
             doc.setFont(undefined, 'bold');
             doc.text("VALIDASI DIGITAL SISTEM", 15, finalY + 7);
-            
             doc.setFont(undefined, 'normal');
             doc.setTextColor(60, 60, 60);
             doc.text("Laporan ini dibuat otomatis oleh sistem Kenekozo Logistics.", 15, finalY + 13);
@@ -665,13 +677,14 @@
 
             if(st === 'ACCEPTED' && !activeMission.startTime) {
                 activeMission.startTime = timeStr;
+                activeMission.startTimeTs = now.getTime(); // Store TS
                 const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Bismillah, saya jalan ya Bu! 🚛💨\n🕒 ${activeMission.startTime}`)}`;
                 window.open(url, '_blank');
             }
             
             if(st === 'COMPLETED' && !activeMission.endTime) {
                 activeMission.endTime = timeStr;
-                // Optional: Lapor Balik Garasi
+                activeMission.endTimeTs = now.getTime(); // Store TS
                 const url = `https://wa.me/${activeMission.adminPhone}?text=${encodeURIComponent(`Alhamdulillah, sudah sampai garasi Bu! 🏁\n🕒 ${activeMission.endTime}\n\nMisi selesai.`)}`;
                 window.open(url, '_blank');
             }
